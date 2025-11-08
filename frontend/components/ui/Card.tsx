@@ -16,7 +16,7 @@ export const Card: React.FC<CardProps> = ({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`glass-card ${className} ${
+      className={`glass-card bg-purple-800/30 border-purple-500/30 ${className} ${
         glow ? 'shadow-lg shadow-primary/20' : ''
       }`}
     >

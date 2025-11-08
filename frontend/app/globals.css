@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-:root {
+@theme {
   /* Define custom colors for Tailwind utilities */
   --color-primary: #8b5cf6;
   --color-primary-dark: #7c3aed;
@@ -16,7 +16,7 @@
 
   --color-text-primary: #ffffff;
   --color-text-secondary: #e9d5ff;
-  --color-text-muted: #93c5fd;
+  --color-text-muted: #93c5ff;
 
   --color-border-primary: #8b5cf6;
   --color-border-secondary: #6366f1;
@@ -61,8 +61,7 @@ body {
     }
 
     &:disabled {
-      background: #6b7280;
-      color: #9ca3af;
+      opacity: 0.5;
     }
   }
 
@@ -90,36 +89,3 @@ body {
 /* =========================
    Utility Classes
    ========================= */
-@layer utilities {
-  .text-text-secondary {
-    color: var(--color-text-secondary);
-  }
-
-  .text-text-muted {
-    color: var(--color-text-muted);
-  }
-  
-  .bg-bg-primary {
-    background-color: var(--color-bg-primary);
-  }
-  
-  .bg-bg-secondary {
-    background-color: var(--color-bg-secondary);
-  }
-  
-  .bg-bg-tertiary {
-    background-color: var(--color-bg-tertiary);
-  }
-  
-  .border-border-primary {
-    border-color: var(--color-border-primary);
-  }
-  
-  .border-border-secondary {
-    border-color: var(--color-border-secondary);
-  }
-  
-  .border-border-muted {
-    border-color: var(--color-border-muted);
-  }
-}
