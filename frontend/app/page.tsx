@@ -1,5 +1,5 @@
+"use client";
 import { motion } from 'framer-motion';
-
 
 import { NavigationTabs } from '@/components/poetry/NavigationTabs';
 import { CollectiveConsciousness } from '@/components/poetry/CollectiveConsciousness';

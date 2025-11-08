@@ -5,6 +5,7 @@ import {
   Collaborator,
   CollectivePoem,
   ZKProof,
+  Poem,
 } from "@/types/poetry";
 
 interface PoetryStore extends PoetryPlatformState {
@@ -20,7 +21,93 @@ interface PoetryStore extends PoetryPlatformState {
   queryCollective: (query: string) => Promise<void>;
   createCollaborativePoem: (content: string) => Promise<void>;
   createAnonymousePoem: (content: string) => Promise<void>;
+
+  anonymousPoems: Poem[];
+  
+  // Enhanced Actions
+  createAnonymousPoem: (content: string, options?: {
+    simulateError?: boolean;
+    delay?: number;
+    customProof?: Partial<ZKProof>;
+  }) => Promise<{
+    success: boolean;
+    poem?: Poem;
+    proof?: ZKProof;
+    error?: string;
+  }>;
+  
+  // Test utilities
+  generateTestAnonymousPoems: (count: number) => Promise<void>;
+  clearAnonymousPoems: () => void;
+  validateZKProof: (proof: ZKProof) => boolean;
 }
+
+const generateMockZKProof = (poemId: string): ZKProof => {
+  const generateHex = (length: number) => 
+    '0x' + Array(length).fill(0).map(() => 
+      Math.floor(Math.random() * 16).toString(16)).join('');
+  
+  return {
+    commitment: generateHex(64),
+    nullifier: generateHex(64),
+    verified: true,
+    poemId,
+  };
+};
+
+const generateMockPoemContent = (): string => {
+  const poems = [
+    `In shadows deep where secrets sleep,
+A voice emerges, promises to keep,
+No name, no face, just words that flow,
+In digital streams where truths can grow.
+
+The blockchain bears my silent mark,
+A spark of light within the dark,
+Ownership proved but identity veiled,
+In zero-knowledge, my truth is hailed.`,
+
+    `Anonymous ink on digital scroll,
+A hidden author, a secret soul,
+Through circuits deep my verses race,
+Leaving no fingerprint, no trace.
+
+Yet in the math, my claim is sound,
+On distributed ground my rights are bound,
+A ghostly presence, forever free,
+My poetry lives, though none see me.`,
+
+    `Behind the mask of cryptography,
+I weave my words for all to see,
+No reputation, no past to bind,
+Just pure expression of the mind.
+
+The nullifier guards my single claim,
+While ZK-proofs protect my name,
+In this digital sanctuary,
+My voice rings loud, yet I stay free.`,
+
+    `Whispers etched in blockchain stone,
+A poem born, yet left alone,
+No author's pride, no ego's stain,
+Just beauty rising from the pain.
+
+The commitment hash my only key,
+To prove what secretly belongs to me,
+In this anonymous design,
+Both ownership and privacy align.`
+  ];
+  
+  return poems[Math.floor(Math.random() * poems.length)];
+};
+
+const generateMockPoemStats = () => ({
+  wordCount: Math.floor(Math.random() * 100) + 50,
+  lineCount: Math.floor(Math.random() * 20) + 8,
+  sentiment: ['contemplative', 'emotional', 'revolutionary', 'personal', 'philosophical'][Math.floor(Math.random() * 5)],
+  theme: ['identity', 'freedom', 'technology', 'love', 'society'][Math.floor(Math.random() * 5)],
+});
+
 
 export const usePoetryStore = create<PoetryStore>()(
   devtools((set, get) => ({
@@ -90,22 +177,138 @@ We are the silence, we are the sound.`,
         console.log('Creating fractional NFT with:', { content, collaborators });
         set ({ isLoading: false });
     },
-    createAnonymousPoem: async (content: string) => {
+     createAnonymousPoem: async (content: string, options = {}) => {
+        const {
+          simulateError = false,
+          delay = 1500,
+          customProof
+        } = options;
+
+        set({ isLoading: true, zkProof: null });
+
+        try {
+          // Simulate API call delay
+          await new Promise(resolve => setTimeout(resolve, delay));
+
+          // Simulate random errors for testing
+          if (simulateError) {
+            const errors = [
+              'ZK proof generation failed: Insufficient entropy',
+              'Nullifier collision detected',
+              'Commitment verification timeout',
+              'Blockchain network congestion',
+              'Gas estimation failed'
+            ];
+            throw new Error(errors[Math.floor(Math.random() * errors.length)]);
+          }
+
+          // Validate content
+          if (!content.trim()) {
+            throw new Error('Poem content cannot be empty');
+          }
+
+          if (content.length < 50) {
+            throw new Error('Poem must be at least 50 characters long');
+          }
+
+          if (content.length > 5000) {
+            throw new Error('Poem cannot exceed 5000 characters');
+          }
+
+          const poemId = `anonymous_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          
+          // Generate mock ZK proof
+          const proof = customProof ? 
+            { ...generateMockZKProof(poemId), ...customProof } : 
+            generateMockZKProof(poemId);
+
+          // Create anonymous poem record
+          const anonymousPoem: Poem = {
+            id: poemId,
+            content: content.trim(),
+            author: 'Anonymous',
+            createdAt: new Date(),
+            isAnonymous: true,
+            nftId: `zk_${Math.random().toString(36).substr(2, 16)}`,
+            ...generateMockPoemStats()
+          };
+
+          // Update state
+          set(state => ({
+            zkProof: proof,
+            isLoading: false,
+            anonymousPoems: [anonymousPoem, ...state.anonymousPoems]
+          }));
+
+          return {
+            success: true,
+            poem: anonymousPoem,
+            proof
+          };
+
+        } catch (error) {
+          console.error('Anonymous poem creation failed:', error);
+          set({ isLoading: false, zkProof: null });
+          
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error occurred'
+          };
+        }
+      },
+
+      // Test utility to generate multiple poems
+      generateTestAnonymousPoems: async (count: number) => {
         set({ isLoading: true });
         
-        // Simulating ZK proof generation
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        const mockProof: ZKProof = {
-          commitment: '0x' + Array(64).fill(0).map(() => 
-            Math.floor(Math.random() * 16).toString(16)).join(''),
-          nullifier: '0x' + Array(64).fill(0).map(() => 
-            Math.floor(Math.random() * 16).toString(16)).join(''),
-          verified: true,
-          poemId: Date.now().toString(),
-        };
+        const promises = Array.from({ length: count }, async (_, index) => {
+          await new Promise(resolve => setTimeout(resolve, index * 200)); // Stagger requests
+          
+          const poemId = `test_${Date.now()}_${index}`;
+          const proof = generateMockZKProof(poemId);
+          const poem: Poem = {
+            id: poemId,
+            content: generateMockPoemContent(),
+            author: 'Anonymous',
+            createdAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000), // Random date in last week
+            isAnonymous: true,
+            nftId: `test_zk_${Math.random().toString(36).substr(2, 16)}`,
+            ...generateMockPoemStats()
+          };
 
-        set({ zkProof: mockProof, isLoading: false });
+          return { poem, proof };
+        });
+
+        try {
+          const results = await Promise.all(promises);
+          set(state => ({
+            anonymousPoems: [...results.map(r => r.poem), ...state.anonymousPoems],
+            isLoading: false
+          }));
+        } catch (error) {
+          console.error('Test poem generation failed:', error);
+          set({ isLoading: false });
+        }
       },
-  }))
+
+      // Utility to clear test poems
+      clearAnonymousPoems: () => set({ anonymousPoems: [] }),
+
+      // Mock ZK proof validation
+      validateZKProof: (proof: ZKProof) => {
+        // Simulate ZK proof validation logic
+        const isValid = 
+          proof.commitment.startsWith('0x') && 
+          proof.commitment.length === 66 && // 0x + 64 hex chars
+          proof.nullifier.startsWith('0x') && 
+          proof.nullifier.length === 66 &&
+          proof.verified === true;
+
+        return isValid;
+      },
+  }),
+  {
+    name: 'poetry-platform-state',
+  }
+)
 );

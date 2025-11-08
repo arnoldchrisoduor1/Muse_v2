@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, TrendingUp, AlertCircle, Plus, Trash2 } from 'lucide-react';
@@ -19,9 +20,10 @@ export const FractionalOwnership: React.FC = () => {
 
   const addCollaborator = () => {
     const newCollaborator: Collaborator = {
-      userId: Date.now().toString(),
-      username: `poet_${Math.random().toString(36).substr(2, 5)}`,
-      share: 0,
+        userId: Date.now().toString(),
+        username: `poet_${Math.random().toString(36).substr(2, 5)}`,
+        share: 0,
+        joinedAt: undefined
     };
     setCollaborators([...collaborators, newCollaborator]);
   };
