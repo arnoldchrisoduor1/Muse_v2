@@ -21,7 +21,7 @@ export interface Poem {
 
 export interface CollectivePoem extends Poem {
     query: string;
-    trainDataCount: number;
+    trainingDataCount: number;
     treasuryContribution: number;
 }
 
@@ -34,7 +34,7 @@ export interface ZKProof {
     commitment: string;
     nullifier: string;
     verified: boolean;
-    peomId: string;
+    poemId: string;
 }
 
 export interface PoetryPlatformState {
