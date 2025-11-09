@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { NavigationTabs } from '@/components/poetry/NavigationTabs';
 import { CollectiveConsciousness } from '@/components/poetry/CollectiveConsciousness';
 import { FractionalOwnership } from '@/components/poetry/FractionalOwnership';
-import { AnonymousProof } from '@/components/poetry/AnonymousProof';
+// import { AnonymousProof } from '@/components/poetry/AnonymousProof';
 import { usePoetryStore } from '@/lib/store/poetry-store';
 
 export default function HomePage() {
@@ -17,8 +17,8 @@ export default function HomePage() {
         return <CollectiveConsciousness />;
       case 'fractional':
         return <FractionalOwnership />;
-      case 'anonymous':
-        return <AnonymousProof />;
+      // case 'anonymous':
+      //   return <AnonymousProof />;
       default:
         return <CollectiveConsciousness />;
     }

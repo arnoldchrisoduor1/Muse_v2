@@ -141,3 +141,41 @@ export function ContentPerformance({ performance, view }: ContentPerformanceProp
                 Earned
               </div>
             </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Performance Summary */}
+      {!isCompact && (
+        <div className="mt-6 pt-4 border-t border-white/10">
+          <div className="grid grid-cols-4 gap-4 text-center">
+            <div>
+              <div className="text-lg font-bold text-primary">
+                {performance.reduce((sum, poem) => sum + poem.views, 0).toLocaleString()}
+              </div>
+              <div className="text-xs text-text-muted">Total Views</div>
+            </div>
+            <div>
+              <div className="text-lg font-bold text-pink-400">
+                {performance.reduce((sum, poem) => sum + poem.likes, 0).toLocaleString()}
+              </div>
+              <div className="text-xs text-text-muted">Total Likes</div>
+            </div>
+            <div>
+              <div className="text-lg font-bold text-green-400">
+                {performance.reduce((sum, poem) => sum + poem.comments, 0).toLocaleString()}
+              </div>
+              <div className="text-xs text-text-muted">Total Comments</div>
+            </div>
+            <div>
+              <div className="text-lg font-bold text-accent">
+                ${performance.reduce((sum, poem) => sum + poem.earnings, 0).toFixed(2)}
+              </div>
+              <div className="text-xs text-text-muted">Total Earnings</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
