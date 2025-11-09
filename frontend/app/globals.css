@@ -21,6 +21,19 @@
   --color-border-primary: #8b5cf6;
   --color-border-secondary: #6366f1;
   --color-border-muted: #374151;
+
+  /* New responsive breakpoints */
+  --breakpoint-xs: 480px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  /* New spacing for mobile */
+  --spacing-mobile: 1rem;
+  --spacing-tablet: 1.5rem;
+  --spacing-desktop: 2rem;
 }
 
 /* =========================
@@ -35,13 +48,50 @@ body {
    Component Styles
    ========================= */
 @layer components {
-  .glass-card {
-    background: rgb(255 255 255 / 10%);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgb(255 255 255 / 20%);
-    border-radius: 1rem;
+  /* Enhanced glass card with better mobile support */
+.glass-card {
+  background: rgb(255 255 255 / 10%);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 1rem;
+  
+  /* Better mobile performance */
+  @media (max-width: 768px) {
+    backdrop-filter: blur(10px);
+    border-radius: 0.75rem;
   }
+}
 
+.glass-card-nav {
+  background: rgb(255 255 255 / 10%);
+  backdrop-filter: blur(20px);
+  /* border: 1px solid rgb(255 255 255 / 20%); */
+  /* border-radius: 1rem; */
+  
+  /* Better mobile performance */
+  @media (max-width: 768px) {
+    backdrop-filter: blur(10px);
+    border-radius: 0.75rem;
+  }
+}
+/* Mobile-first responsive utilities */
+.mobile-container {
+  @apply px-4 sm:px-6 lg:px-8;
+}
+
+/* Collapsible sidebar transitions */
+.sidebar-transition {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Hide scrollbar but allow scrolling */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
   .gradient-text {
     background: linear-gradient(90deg, var(--color-secondary) 0%, var(--color-primary) 100%);
     -webkit-background-clip: text;
@@ -85,7 +135,3 @@ body {
     }
   }
 }
-
-/* =========================
-   Utility Classes
-   ========================= */

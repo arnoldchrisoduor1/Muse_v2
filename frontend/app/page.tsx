@@ -1,3 +1,4 @@
+// app/page.tsx (HomePage)
 "use client";
 import { motion } from 'framer-motion';
 
@@ -24,7 +25,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">

@@ -1,7 +1,9 @@
+// app/layout.tsx
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-// import '@/styles/globals.css';
-import '../app/globals.css'
+import '../app/globals.css'; // keep your global css import
+
+import MainLayout from './(main)/layout'; // <-- relative to app/, adjust if your folder differs
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -19,9 +21,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <main className="min-h-screen bg-gradient-bg">
+        {/* MainLayout is a client component; it's fine to import it here */}
+        <MainLayout>
           {children}
-        </main>
+        </MainLayout>
       </body>
     </html>
   );
