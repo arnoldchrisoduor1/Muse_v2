@@ -1,4 +1,12 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "apps/api/src",
+    "tsBuildInfoFile": "dist/tsconfig.build.tsbuildinfo",
+    "removeComments": true,
+    "sourceMap": false
+  },
+  "include": ["apps/api/src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "test"]
 }

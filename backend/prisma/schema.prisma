@@ -1,0 +1,372 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+// ============================================================================
+// PHASE 1: CORE ENTITIES
+// ============================================================================
+
+enum UserVerificationStatus {
+  VERIFIED
+  UNVERIFIED
+}
+
+enum PoemStatus {
+  DRAFT
+  PUBLISHED
+  UNLISTED
+  FLAGGED
+}
+
+enum LicenseType {
+  ALL_RIGHTS_RESERVED
+  CC_BY
+  CC_BY_SA
+  CC_BY_NC
+  PUBLIC_DOMAIN
+}
+
+enum PoemMood {
+  MELANCHOLIC
+  HOPEFUL
+  ANGRY
+  PEACEFUL
+  ANXIOUS
+  JOYFUL
+  CONTEMPLATIVE
+  DEFIANT
+}
+
+enum ContributionType {
+  ORIGINAL
+  REMIX
+  COLLABORATION
+  INSPIRATION
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ============================================================================
+// USER
+// ============================================================================
+
+model User {
+  id                    String                  @id @default(uuid())
+  username              String                  @unique
+  email                 String                  @unique
+  passwordHash          String?                 // Nullable for wallet-only auth
+  walletAddress         String?                 @unique
+  
+  // Profile
+  bio                   String                  @default("")
+  avatarUrl             String?
+  
+  // Stats
+  reputation            Int                     @default(0)
+  totalPoems            Int                     @default(0)
+  totalCollaborations   Int                     @default(0)
+  totalEarnings         Decimal                 @default(0) @db.Decimal(20, 8)
+  followersCount        Int                     @default(0)
+  followingCount        Int                     @default(0)
+  
+  // Status
+  isCollectiveContributor Boolean               @default(false)
+  verificationStatus    UserVerificationStatus  @default(UNVERIFIED)
+  
+  // Preferences
+  allowRemixes          Boolean                 @default(true)
+  defaultLicenseType    LicenseType             @default(ALL_RIGHTS_RESERVED)
+  
+  // Timestamps
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  lastLoginAt           DateTime?
+  
+  // Relationships
+  poems                 Poem[]                  @relation("AuthorPoems")
+  collaborations        Collaborator[]
+  likes                 Like[]
+  comments              Comment[]
+  bookmarks             Bookmark[]
+  following             Follow[]                @relation("Following")
+  followers             Follow[]                @relation("Followers")
+  notifications         Notification[]
+  
+  @@index([username])
+  @@index([email])
+  @@index([walletAddress])
+  @@index([createdAt])
+  @@map("users")
+}
+
+// ============================================================================
+// POEM
+// ============================================================================
+
+model Poem {
+  id                    String        @id @default(uuid())
+  title                 String
+  content               String        @db.Text
+  excerpt               String        // First 150 chars
+  
+  // Authorship
+  authorId              String
+  author                User          @relation("AuthorPoems", fields: [authorId], references: [id], onDelete: Cascade)
+  isAnonymous           Boolean       @default(false)
+  anonymousCommitment   String?       @unique // For ZK proofs
+  
+  // Collaboration
+  isCollaborative       Boolean       @default(false)
+  collaborators         Collaborator[]
+  
+  // Timestamps
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  publishedAt           DateTime?
+  
+  // Blockchain (nullable until minted)
+  contentHash           String?       @unique
+  blockchainTxHash      String?
+  nftTokenId            String?       @unique
+  nftContractAddress    String?
+  
+  // Metrics
+  views                 Int           @default(0)
+  likes                 Int           @default(0)
+  commentsCount         Int           @default(0)
+  shares                Int           @default(0)
+  bookmarks             Int           @default(0)
+  
+  // AI Features
+  qualityScore          Int?          // 0-100 from LLM
+  embeddingVector       Unsupported("vector(384)")?  // pgvector for semantic search
+  contributedToCollective Boolean     @default(false)
+  collectiveInclusionDate DateTime?
+  
+  // Relationships (derivatives)
+  parentPoemId          String?
+  parentPoem            Poem?         @relation("PoemDerivatives", fields: [parentPoemId], references: [id])
+  derivatives           Poem[]        @relation("PoemDerivatives")
+  
+  // Licensing
+  licenseType           LicenseType   @default(ALL_RIGHTS_RESERVED)
+  commercialUsePrice    Decimal?      @db.Decimal(20, 8) // In ETH
+  
+  // Status
+  status                PoemStatus    @default(DRAFT)
+  
+  // Discovery
+  tags                  String[]      @default([])
+  mood                  PoemMood?
+  readingTime           Int           @default(60) // seconds
+  
+  // Relationships
+  likesRelation         Like[]
+  commentsRelation      Comment[]
+  bookmarksRelation     Bookmark[]
+  aiFeedback            AIFeedback[]
+  
+  @@index([authorId])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([qualityScore])
+  @@index([parentPoemId])
+  @@index([createdAt])
+  @@map("poems")
+}
+
+// ============================================================================
+// COLLABORATOR (Fractional Ownership)
+// ============================================================================
+
+model Collaborator {
+  id                    String            @id @default(uuid())
+  
+  poemId                String
+  poem                  Poem              @relation(fields: [poemId], references: [id], onDelete: Cascade)
+  
+  userId                String
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  sharePercentage       Decimal           @db.Decimal(5, 2) // e.g., 33.33
+  contributionType      ContributionType  @default(COLLABORATION)
+  contributionHash      String            // Hash of their contribution for verification
+  
+  approvalStatus        ApprovalStatus    @default(PENDING)
+  
+  contributedAt         DateTime          @default(now())
+  approvedAt            DateTime?
+  
+  @@unique([poemId, userId])
+  @@index([userId])
+  @@index([poemId])
+  @@map("collaborators")
+}
+
+// ============================================================================
+// ENGAGEMENT (Likes, Comments, Bookmarks)
+// ============================================================================
+
+model Like {
+  id                    String    @id @default(uuid())
+  
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  poemId                String
+  poem                  Poem      @relation(fields: [poemId], references: [id], onDelete: Cascade)
+  
+  createdAt             DateTime  @default(now())
+  
+  @@unique([userId, poemId])
+  @@index([poemId])
+  @@index([userId])
+  @@map("likes")
+}
+
+model Comment {
+  id                    String    @id @default(uuid())
+  content               String    @db.Text
+  
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  poemId                String
+  poem                  Poem      @relation(fields: [poemId], references: [id], onDelete: Cascade)
+  
+  // For nested comments (replies)
+  parentCommentId       String?
+  parentComment         Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id])
+  replies               Comment[] @relation("CommentReplies")
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  @@index([poemId])
+  @@index([userId])
+  @@index([parentCommentId])
+  @@index([createdAt])
+  @@map("comments")
+}
+
+model Bookmark {
+  id                    String    @id @default(uuid())
+  
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  poemId                String
+  poem                  Poem      @relation(fields: [poemId], references: [id], onDelete: Cascade)
+  
+  createdAt             DateTime  @default(now())
+  
+  @@unique([userId, poemId])
+  @@index([poemId])
+  @@index([userId])
+  @@map("bookmarks")
+}
+
+// ============================================================================
+// SOCIAL (Follow)
+// ============================================================================
+
+model Follow {
+  id                    String    @id @default(uuid())
+  
+  followerId            String
+  follower              User      @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  
+  followingId           String
+  following             User      @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
+  
+  createdAt             DateTime  @default(now())
+  
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@map("follows")
+}
+
+// ============================================================================
+// AI FEEDBACK
+// ============================================================================
+
+model AIFeedback {
+  id                    String    @id @default(uuid())
+  
+  poemId                String
+  poem                  Poem      @relation(fields: [poemId], references: [id], onDelete: Cascade)
+  
+  // Feedback content
+  overallScore          Int       // 0-100
+  strengths             String[]  @default([])
+  improvements          String[]  @default([])
+  suggestions           Json      // Structured suggestions from LLM
+  
+  // Metadata
+  modelUsed             String    @default("meta-llama/Llama-3.2-3B-Instruct")
+  processingTime        Int       // milliseconds
+  
+  createdAt             DateTime  @default(now())
+  
+  @@index([poemId])
+  @@index([createdAt])
+  @@map("ai_feedback")
+}
+
+// ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+
+enum NotificationType {
+  COMMENT
+  LIKE
+  REMIX
+  COLLABORATION_INVITE
+  COLLABORATION_APPROVED
+  SALE
+  REVENUE
+  COLLECTION_ADD
+  FOLLOW
+  COLLECTIVE_INCLUSION
+}
+
+model Notification {
+  id                    String            @id @default(uuid())
+  
+  userId                String
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type                  NotificationType
+  title                 String
+  message               String
+  actionUrl             String?
+  
+  isRead                Boolean           @default(false)
+  
+  // Related entities (nullable)
+  relatedPoemId         String?
+  relatedUserId         String?
+  
+  // Rich data
+  metadata              Json?
+  
+  createdAt             DateTime          @default(now())
+  
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
