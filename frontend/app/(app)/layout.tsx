@@ -27,7 +27,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         isSidebarOpen={isRightSidebarOpen}
       />
       
-      <div className="flex flex-grow">
+      <div className="flex grow">
         {/* Left Sidebar */}
         <aside className="w-64 hidden lg:block p-6 sidebar-transition">
           <SectionNav />

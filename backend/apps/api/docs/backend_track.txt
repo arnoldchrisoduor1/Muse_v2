@@ -1,0 +1,35 @@
+Development Workflow
+Day 1: Project Setup
+
+Initialize NestJS project
+Set up Prisma + Neon connection
+Configure Redis (Upstash)
+Basic health check endpoint
+Swagger docs
+
+Week 1: Core Loop (Sarah's Journey)
+
+User registration/login
+Create/edit poem
+AI feedback integration
+Publish poem
+View feed
+
+Week 2-3: Engagement & Discovery
+
+Like/comment system
+Follow system
+Semantic search (embeddings)
+Personal feed algorithm
+
+Week 4: Collaboration
+
+Invite collaborators
+Track contributions
+WebSocket for real-time editing
+
+Month 2: Blockchain Integration
+
+NFT minting
+Wallet connection
+Basic revenue tracking

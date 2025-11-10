@@ -1,0 +1,253 @@
+Core Technology StackBackend Framework
+
+NestJS (v10+)
+
+TypeScript-first
+Modular architecture
+Built-in dependency injection
+Excellent ecosystem
+
+
+Database & ORM
+
+PostgreSQL (v15+) via Neon (hosted)
+
+Serverless Postgres
+Auto-scaling
+Branching for dev environments
+Built-in connection pooling
+Extensions: pgvector for embeddings
+
+
+
+Prisma (ORM)
+
+Type-safe database client
+Declarative migrations
+Excellent DX with schema introspection
+Auto-generated TypeScript types
+
+
+Caching & Session
+
+Redis via Upstash
+
+Free tier: 10K commands/day
+Global edge network
+REST API (no connection pooling issues)
+Use for:
+
+Session storage
+Rate limiting
+Hot data caching
+Real-time presence
+
+
+
+
+Message Queue
+
+RabbitMQ (self-hosted or CloudAMQP free tier)
+
+For async tasks:
+
+NFT minting jobs
+Email notifications
+AI processing
+Revenue distribution
+Webhook deliveries
+
+
+
+
+AI/ML ServicesPrimary LLM (Feedback & Collective)
+
+Llama 3.2 3B Instruct via HuggingFace Inference API
+
+Free tier (rate limited)
+Endpoint: meta-llama/Llama-3.2-3B-Instruct
+Use for:
+
+Poem quality scoring
+Writing suggestions
+Collective Consciousness queries
+
+
+
+
+Embeddings (Semantic Search)
+
+Sentence Transformers - Self-hosted or HF API
+
+Model: sentence-transformers/all-MiniLM-L6-v2
+Lightweight (80MB)
+Fast inference (CPU-friendly)
+384-dimensional vectors
+Store in pgvector
+
+
+Backup/Production AI (when ready)
+
+Together.ai or Groq (cheap inference)
+
+$0.0002 per 1K tokens
+Faster than HF
+More reliable
+
+
+Blockchain Integration
+
+Ethers.js v6 or Viem (recommended)
+
+Viem is faster, more modern, better TypeScript
+For: wallet connection, NFT minting, revenue distribution
+
+
+
+Smart Contracts
+
+Solidity (for NFTs, fractional ownership, escrow)
+Deploy on: Polygon (cheap gas) or Base (Coinbase L2)
+Development: Hardhat or Foundry
+
+
+
+Blockchain Event Listener
+
+Custom NestJS service listening to contract events
+Store events in DB for reconciliation
+
+
+File Storage
+
+Cloudflare R2 (S3-compatible, no egress fees)
+
+For: avatars, cover images, exported poems
+Free tier: 10GB storage
+Alternative: AWS S3 or UploadThing
+
+
+Authentication
+
+Passport.js (NestJS integration)
+
+Local strategy (email/password)
+JWT tokens
+Refresh token rotation
+
+
+
+Optional: Clerk or Supabase Auth (easier)
+Web3 Auth
+
+SIWE (Sign-In with Ethereum)
+
+Let users connect wallet as login
+No password needed
+Library: siwe npm package
+
+
+Real-time Features
+
+Socket.io (NestJS WebSocket adapter)
+
+For: collaborative editing, live cursors, presence
+Redis adapter for horizontal scaling
+
+
+Search
+
+PostgreSQL Full-Text Search (built-in)
+
+For: poem titles, content, tags
+GIN indexes for performance
+
+
+
+pgvector (semantic search)
+
+Cosine similarity on embeddings
+HNSW index for fast ANN search
+
+
+API Documentation
+
+Swagger/OpenAPI (NestJS built-in)
+
+Auto-generated from decorators
+Interactive API explorer
+
+
+Validation & Serialization
+
+class-validator + class-transformer
+
+Automatic DTO validation
+Type-safe transformations
+Built into NestJS
+
+
+Background Jobs
+
+BullMQ (Redis-based queue)
+
+Cron jobs (daily quality checks, DAO proposals)
+Delayed jobs (scheduled publications)
+Rate-limited jobs (API calls to HuggingFace)
+Job monitoring UI: Bull Board
+
+
+Development ToolsCode Quality
+
+ESLint + Prettier
+Husky (git hooks)
+lint-staged (pre-commit checks)
+Testing
+
+Jest (unit tests)
+Supertest (e2e tests)
+Prisma test environment (isolated DB per test)
+Monitoring & Observability
+
+Sentry (error tracking - free tier)
+Pino (structured logging)
+Prisma logging (query performance)
+Development Environment
+
+Docker Compose (local RabbitMQ, Redis if needed)
+Prisma Studio (database GUI)
+Postman/Insomnia (API testing)
+Infrastructure & DeploymentHosting (MVP)
+
+Railway or Render
+
+Easy NestJS deployment
+Auto-scaling
+Free tier for testing
+GitHub integration
+
+
+Hosting (Production)
+
+Fly.io or Railway (paid tier)
+
+Global edge deployment
+Auto-scaling
+Built-in Redis
+
+
+
+Alternative: AWS ECS or DigitalOcean App Platform
+CI/CD
+
+GitHub Actions
+
+Run tests on PR
+Auto-deploy to staging
+Prisma migration checks
+
+
+Database Backups
+
+Neon automatic backups (included)
+Point-in-time recovery

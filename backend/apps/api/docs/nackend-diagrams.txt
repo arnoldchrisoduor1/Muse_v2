@@ -1,0 +1,63 @@
+collective-poetry/
+├── apps/
+│   └── api/                          # NestJS backend
+│       ├── src/
+│       │   ├── modules/
+│       │   │   ├── users/
+│       │   │   │   ├── entities/
+│       │   │   │   │   └── user.entity.ts
+│       │   │   │   ├── dto/
+│       │   │   │   │   ├── create-user.dto.ts
+│       │   │   │   │   └── update-user.dto.ts
+│       │   │   │   ├── users.controller.ts
+│       │   │   │   ├── users.service.ts
+│       │   │   │   ├── users.repository.ts
+│       │   │   │   └── users.module.ts
+│       │   │   │
+│       │   │   ├── poems/
+│       │   │   ├── auth/
+│       │   │   ├── ai/
+│       │   │   ├── blockchain/
+│       │   │   ├── notifications/
+│       │   │   └── storage/
+│       │   │
+│       │   ├── common/
+│       │   │   ├── decorators/
+│       │   │   ├── guards/
+│       │   │   ├── filters/
+│       │   │   ├── interceptors/
+│       │   │   └── pipes/
+│       │   │
+│       │   ├── config/
+│       │   │   ├── database.config.ts
+│       │   │   ├── redis.config.ts
+│       │   │   └── ai.config.ts
+│       │   │
+│       │   ├── prisma/
+│       │   │   ├── schema.prisma
+│       │   │   ├── migrations/
+│       │   │   └── seed.ts
+│       │   │
+│       │   └── main.ts
+│       │
+│       ├── test/
+│       ├── .env.example
+│       └── package.json
+│
+├── packages/
+│   ├── contracts/                    # Smart contracts (Hardhat)
+│   │   ├── contracts/
+│   │   │   ├── PoemNFT.sol
+│   │   │   ├── FractionalOwnership.sol
+│   │   │   └── RevenueDistributor.sol
+│   │   ├── scripts/
+│   │   └── test/
+│   │
+│   └── shared/                       # Shared types (optional)
+│       └── types/
+│
+├── docker-compose.yml               # Local development services
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+└── README.md
