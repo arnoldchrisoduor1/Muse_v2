@@ -42,7 +42,7 @@ export function PublishedPoems() {
                   {poem.content}
                 </p>
               </div>
-              <div className={`px-2 py-1 rounded-full text-xs font-medium ml-4 flex-shrink-0 ${
+              <div className={`px-2 py-1 rounded-full text-xs font-medium ml-4 shrink-0 ${
                 poem.isClaimed 
                   ? 'bg-accent/20 text-accent border border-accent/30' 
                   : 'bg-warning/20 text-warning border border-warning/30'

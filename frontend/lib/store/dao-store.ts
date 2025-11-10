@@ -80,6 +80,7 @@ interface CreateProposalData {
   tags: string[];
 }
 
+
 interface DAOVote {
   id: string;
   proposalId: string;
@@ -465,7 +466,7 @@ export const useDAOStore = create<DAOState>()(
         set((state) => ({
           proposals: updatedProposals,
           activeProposals: updatedProposals.filter(
-            (p) => p.status === "active" || p.status === "draft"
+            (p: DAOProposal) => p.status === "active" || p.status === "draft"
           ),
           userVotes: [newVote, ...state.userVotes],
           isVoting: false,
@@ -479,24 +480,26 @@ export const useDAOStore = create<DAOState>()(
         // Simulate blockchain execution
         await new Promise((resolve) => setTimeout(resolve, 4000));
 
-        const updatedProposals = get().proposals.map((proposal) => {
-          if (proposal.id === proposalId && proposal.status === "passed") {
-            return {
-              ...proposal,
-              status: "executed",
-              executionTxHash: `0x${Math.random().toString(16).substr(2)}`,
-              executedAt: new Date(),
-              executionNotes: "Proposal executed successfully on blockchain",
-              updatedAt: new Date(),
-            };
+        const updatedProposals = get().proposals.map(
+          (proposal: DAOProposal): DAOProposal => {
+            if (proposal.id === proposalId && proposal.status === "passed") {
+              return {
+                ...proposal,
+                status: "executed",
+                executionTxHash: `0x${Math.random().toString(16).slice(2)}`,
+                executedAt: new Date(),
+                executionNotes: "Proposal executed successfully on blockchain",
+                updatedAt: new Date(),
+              } as DAOProposal;
+            }
+            return proposal;
           }
-          return proposal;
-        });
+        );
 
         set({
           proposals: updatedProposals,
           activeProposals: updatedProposals.filter(
-            (p) => p.status === "active" || p.status === "draft"
+            (p): p is DAOProposal => p.status === "active" || p.status === "draft"
           ),
           isExecuting: false,
         });
@@ -508,7 +511,7 @@ export const useDAOStore = create<DAOState>()(
           if (proposal.id === proposalId && proposal.status === "draft") {
             return {
               ...proposal,
-              status: "cancelled",
+              status: "cancelled" as const,
               updatedAt: new Date(),
             };
           }
@@ -518,8 +521,9 @@ export const useDAOStore = create<DAOState>()(
         set({
           proposals: updatedProposals,
           activeProposals: updatedProposals.filter(
-            (p) => p.status === "active" || p.status === "draft"
+            (p): p is DAOProposal => p.status === "active" || p.status === "draft"
           ),
+          isExecuting: false,
         });
       },
 

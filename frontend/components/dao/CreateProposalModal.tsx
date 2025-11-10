@@ -5,6 +5,7 @@ import { X, Vote, Users, Sparkles, Settings, Zap, Shield, DollarSign, FileText }
 import { useDAOStore } from '@/lib/store/dao-store';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { DAOProposal } from '@/types/poetry';
 
 interface CreateProposalModalProps {
   onClose: () => void;
@@ -159,36 +160,64 @@ export function CreateProposalModal({ onClose }: CreateProposalModalProps) {
     });
   };
 
-  const handleSubmit = async () => {
-    if (!formData.title.trim() || !formData.description.trim()) {
-      return;
-    }
+  const mapProposalType = (t: ProposalFormData['proposalType']): DAOProposal['type'] => {
+  switch (t) {
+    case 'grant': return 'funding';
+    case 'treasury_allocation': return 'funding';
+    case 'platform_feature': return 'upgrade';
+    case 'collective_training': return 'community';
+    case 'moderation': return 'parameter';
+    case 'partnership': return 'community';
+    default: return 'community';
+  }
+};
 
-    const proposalData = {
-      title: formData.title,
-      description: formData.description,
-      proposalType: formData.proposalType,
-      proposerId: 'current_user',
-      proposer: {
-        username: 'current_user',
-        avatarUrl: '/avatars/current.jpg',
-        reputation: 85,
-      },
-      votingStartsAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Start tomorrow
-      votingEndsAt: new Date(Date.now() + (formData.votingDuration + 1) * 24 * 60 * 60 * 1000),
-      quorumRequired: formData.proposalType === 'grant' ? 40 : 30,
-      approvalThreshold: formData.proposalType === 'grant' ? 60 : 50,
-      requestedAmount: formData.requestedAmount,
-      recipients: formData.recipients.filter(r => r.trim()),
-      featureDescription: formData.featureDescription,
-      trainingDetails: formData.proposalType === 'collective_training' ? formData.trainingDetails : null,
-      discussionUrl: formData.discussionUrl || `https://forum.collectivepoetry.io/proposals/new`,
-      tags: formData.tags,
-    };
+ const handleSubmit = async () => {
+  if (!formData.title.trim() || !formData.description.trim()) return;
 
-    await createProposal(proposalData);
-    onClose();
+  const now = Date.now();
+  const votingDeadline = new Date(now + (formData.votingDuration + 1) * 24 * 60 * 60 * 1000);
+
+  // Build object matching types/poetry.DAOProposal (omit id, createdAt, updatedAt)
+  const proposalData: Omit<DAOProposal, 'id' | 'createdAt' | 'updatedAt'> = {
+    title: formData.title,
+    description: formData.description,
+
+    // proposer must be a User (DAOProposal expects a full User object)
+    proposer: {
+      id: 'current_user_id',
+      username: 'current_user',
+      address: '0x0000',           // replace with real address if available
+      avatar: '/avatars/current.jpg',
+      joinedAt: new Date(),        // use real value if available
+    },
+
+    // DAOProposal expects a single votingDeadline Date (not starts/ends pair)
+    votingDeadline,
+
+    // votes object default (you start at zero)
+    votes: {
+      for: 0,
+      against: 0,
+      abstain: 0,
+    },
+
+    // status and type (status default active)
+    status: 'active',
+    type: mapProposalType(formData.proposalType),
   };
+
+  // If you want to preserve some of the original richer fields (requestedAmount, recipients, etc.)
+  // but they are not in DAOProposal, either:
+  // 1) add them to DAOProposal type, or
+  // 2) send them as a separate payload to the backend endpoint that accepts richer CreateProposalRequest.
+  //
+  // Example: add optional metadata field into DAOProposal if you own the types:
+  // proposalData['metadata'] = { requestedAmount: formData.requestedAmount, recipients: formData.recipients, ... }
+
+  await createProposal(proposalData as any);
+  onClose();
+};
 
   const selectedProposalType = proposalTypes.find(type => type.id === formData.proposalType);
 

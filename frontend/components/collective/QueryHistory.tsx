@@ -76,7 +76,7 @@ export function QueryHistory() {
                   "{query.question}"
                 </p>
               </div>
-              <div className="flex items-center gap-1 text-xs text-text-muted ml-2 flex-shrink-0">
+              <div className="flex items-center gap-1 text-xs text-text-muted ml-2 shrink-0">
                 <span>⭐ {query.qualityRating}/5</span>
               </div>
             </div>

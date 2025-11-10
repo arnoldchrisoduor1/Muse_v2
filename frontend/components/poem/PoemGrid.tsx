@@ -138,13 +138,13 @@ function PoemCard({ poem, index, onLike, onBookmark }: {
           {/* Special Badges */}
           <div className="flex items-center gap-1">
             {poem.isCollaborative && (
-              <Users size={14} className="text-primary" title="Collaborative" />
+              <Users size={14} className="text-primary" aria-label="Collaborative" />
             )}
             {poem.isAnonymous && (
-              <Shield size={14} className="text-accent" title="Anonymous" />
+              <Shield size={14} className="text-accent" aria-label="Anonymous" />
             )}
             {poem.nftTokenId && (
-              <Sparkles size={14} className="text-secondary" title="NFT" />
+              <Sparkles size={14} className="text-secondary" aria-label="NFT" />
             )}
           </div>
         </div>

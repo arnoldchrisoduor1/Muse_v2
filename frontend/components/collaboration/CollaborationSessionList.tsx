@@ -102,7 +102,7 @@ export function CollaborationSessionList({ title, sessions, type }: Collaboratio
                     variant="primary"
                     size="sm"
                     onClick={() => joinSession(session.id)}
-                    className="ml-4 flex-shrink-0"
+                    className="ml-4 shrink-0"
                   >
                     Join
                   </Button>

@@ -227,7 +227,7 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
 
           {canExecute && (
             <Button
-              variant="accent"
+              variant="primary"
               size="sm"
               loading={isExecuting}
               onClick={handleExecute}

@@ -398,7 +398,7 @@ export const useCollaborationStore = create<CollaborationState>()(
       // Simulate blockchain publishing
       await new Promise(resolve => setTimeout(resolve, 3000));
 
-      const updatedSession = {
+      const updatedSession: CollaborationSession = {
         ...currentSession,
         status: 'completed',
         publishedAt: new Date(),

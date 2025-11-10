@@ -44,7 +44,7 @@ export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
   const { activeTab, setActiveTab } = usePoetryStore();
   const router = useRouter();
 
-  const handleNavigation = (pageId: string, href: string) => {
+  const handleNavigation = (pageId: any, href: string) => {
     setActiveTab(pageId);
     router.push(href);
   };

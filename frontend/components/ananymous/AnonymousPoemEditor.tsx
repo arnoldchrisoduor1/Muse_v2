@@ -66,7 +66,7 @@ export function AnonymousPoemEditor() {
         >
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3">
-              <Shield className="text-accent mt-0.5 flex-shrink-0" size={20} />
+              <Shield className="text-accent mt-0.5 shrink-0" size={20} />
               <div>
                 <h3 className="font-semibold text-accent mb-1">Complete Anonymity Guaranteed</h3>
                 <p className="text-text-secondary text-sm">

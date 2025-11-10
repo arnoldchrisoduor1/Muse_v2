@@ -10,7 +10,7 @@ export function ProposalFilters() {
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  const { proposals, setSearchFilters } = useDAOStore();
+  const { proposals } = useDAOStore();
 
   const proposalTypes = [...new Set(proposals.map(p => p.proposalType))];
   const allTags = [...new Set(proposals.flatMap(p => p.tags))];

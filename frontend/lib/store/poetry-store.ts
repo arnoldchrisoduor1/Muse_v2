@@ -6,6 +6,7 @@ import {
   CollectivePoem,
   ZKProof,
   Poem,
+  AnonymousPoem,
 } from "@/types/poetry";
 
 interface PoetryStore extends PoetryPlatformState {
@@ -22,7 +23,7 @@ interface PoetryStore extends PoetryPlatformState {
   createCollaborativePoem: (content: string) => Promise<void>;
   createAnonymousePoem: (content: string) => Promise<void>;
 
-  anonymousPoems: Poem[];
+  anonymousPoems: AnonymousPoem[];
   
   // Enhanced Actions
   createAnonymousPoem: (content: string, options?: {
@@ -52,6 +53,7 @@ const generateMockZKProof = (poemId: string): ZKProof => {
     nullifier: generateHex(64),
     verified: true,
     poemId,
+    generatedAt: new Date(),
   };
 };
 
@@ -161,6 +163,8 @@ We are the silence, we are the sound.`,
         trainingDataCount: 2847,
         treasuryContribution: 0.05,
         nftId: "12847",
+        modelVersion: "v1.0.0",
+        confidenceScore: 0.98,
       };
       set({ generatedPoem: mockPoem, isLoading: false });
     },
@@ -223,13 +227,14 @@ We are the silence, we are the sound.`,
             generateMockZKProof(poemId);
 
           // Create anonymous poem record
-          const anonymousPoem: Poem = {
+          const anonymousPoem: AnonymousPoem = {
             id: poemId,
             content: content.trim(),
             author: 'Anonymous',
             createdAt: new Date(),
             isAnonymous: true,
             nftId: `zk_${Math.random().toString(36).substr(2, 16)}`,
+            zkProof: proof,
             ...generateMockPoemStats()
           };
 
@@ -258,38 +263,54 @@ We are the silence, we are the sound.`,
       },
 
       // Test utility to generate multiple poems
-      generateTestAnonymousPoems: async (count: number) => {
-        set({ isLoading: true });
-        
-        const promises = Array.from({ length: count }, async (_, index) => {
-          await new Promise(resolve => setTimeout(resolve, index * 200)); // Stagger requests
-          
-          const poemId = `test_${Date.now()}_${index}`;
-          const proof = generateMockZKProof(poemId);
-          const poem: Poem = {
-            id: poemId,
-            content: generateMockPoemContent(),
-            author: 'Anonymous',
-            createdAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000), // Random date in last week
-            isAnonymous: true,
-            nftId: `test_zk_${Math.random().toString(36).substr(2, 16)}`,
-            ...generateMockPoemStats()
-          };
+      // Test utility to generate multiple poems
+generateTestAnonymousPoems: async (count: number) => {
+  set({ isLoading: true });
 
-          return { poem, proof };
-        });
+  const promises = Array.from({ length: count }, async (_, index) => {
+    await new Promise(resolve => setTimeout(resolve, index * 200)); // Stagger requests
 
-        try {
-          const results = await Promise.all(promises);
-          set(state => ({
-            anonymousPoems: [...results.map(r => r.poem), ...state.anonymousPoems],
-            isLoading: false
-          }));
-        } catch (error) {
-          console.error('Test poem generation failed:', error);
-          set({ isLoading: false });
-        }
-      },
+    const poemId = `test_${Date.now()}_${index}`;
+    const proof = generateMockZKProof(poemId);
+
+    // Build an AnonymousPoem to match types/poetry.AnonymousPoem
+    const poem: AnonymousPoem = {
+      id: poemId,
+      content: generateMockPoemContent(),
+      title: undefined,
+      createdAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
+      updatedAt: undefined,
+      author: 'Anonymous',
+      isAnonymous: true,
+      zkProof: proof,
+      nftId: `test_zk_${Math.random().toString(36).substr(2, 16)}`,
+      // optional fields from your AnonymousPoem shape — adapt if your type requires different keys
+      canReveal: false,
+      revealDeadline: undefined,
+      // If your AnonymousPoem expects stats/metrics, include reasonable defaults or your generator
+      // (remove or adjust the next line if those keys are not part of your AnonymousPoem interface)
+      ...generateMockPoemStats()
+    };
+
+    return { poem, proof };
+  });
+
+  try {
+    const results = await Promise.all(promises); // results: Array<{poem: AnonymousPoem, proof: ZKProof}>
+
+    set(state => ({
+      // set zkProof to the last generated proof (or null if none)
+      zkProof: results.length ? results[results.length - 1].proof : null,
+      isLoading: false,
+      // prepend the generated poems to existing anonymousPoems
+      anonymousPoems: [...results.map(r => r.poem), ...state.anonymousPoems]
+    }));
+  } catch (error) {
+    console.error('Test poem generation failed:', error);
+    set({ isLoading: false });
+  }
+},
+
 
       // Utility to clear test poems
       clearAnonymousPoems: () => set({ anonymousPoems: [] }),

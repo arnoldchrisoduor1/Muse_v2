@@ -83,7 +83,7 @@ export function ZKProofDisplay() {
               variant="outline"
               size="sm"
               onClick={() => copyToClipboard(generatedProof.poemId, 'poemId')}
-              className="!p-2"
+              className="p-2"
             >
               {copiedField === 'poemId' ? <Check size={14} /> : <Copy size={14} />}
             </Button>
@@ -100,7 +100,7 @@ export function ZKProofDisplay() {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowSensitive(!showSensitive)}
-                  className="!p-1"
+                  className="p-1"
                 >
                   {showSensitive ? <EyeOff size={14} /> : <Eye size={14} />}
                 </Button>
@@ -108,7 +108,7 @@ export function ZKProofDisplay() {
                   variant="outline"
                   size="sm"
                   onClick={() => copyToClipboard(value, field)}
-                  className="!p-1"
+                  className="p-1"
                 >
                   {copiedField === field ? <Check size={14} /> : <Copy size={14} />}
                 </Button>
@@ -156,7 +156,7 @@ export function ZKProofDisplay() {
         {/* Security Notice */}
         <div className="p-3 bg-accent/10 border border-accent/20 rounded-lg">
           <p className="text-sm text-accent flex items-start gap-2">
-            <Shield size={16} className="mt-0.5 flex-shrink-0" />
+            <Shield size={16} className="mt-0.5 shrink-0" />
             <span>
               <strong>Critical:</strong> Your identity is protected by these cryptographic proofs. 
               Anyone with this proof can claim ownership. Store it securely and privately.

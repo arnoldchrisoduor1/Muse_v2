@@ -98,7 +98,7 @@ export function AnonymousIdentity() {
               <div className="text-sm font-medium text-accent">Unclaimed Earnings</div>
               <div className="text-lg font-bold text-accent">${unclaimedEarnings.toFixed(2)}</div>
             </div>
-            <Button variant="accent" size="sm">
+            <Button variant="primary" size="sm">
               Claim Now
             </Button>
           </div>

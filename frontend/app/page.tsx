@@ -1,54 +1,48 @@
-// app/page.tsx (HomePage)
+// app/page.tsx - Updated with footer
 "use client";
-import { motion } from 'framer-motion';
-
-import { NavigationTabs } from '@/components/poetry/NavigationTabs';
-import { CollectiveConsciousness } from '@/components/poetry/CollectiveConsciousness';
-import { FractionalOwnership } from '@/components/poetry/FractionalOwnership';
-// import { AnonymousProof } from '@/components/poetry/AnonymousProof';
-import { usePoetryStore } from '@/lib/store/poetry-store';
+import { HeroSection } from '@/components/landing/HeroSection';
+import { TrendingPoems } from '@/components/landing/TrendingPoems';
+import { FeaturesSection } from '@/components/landing/FeaturesSection';
+import { CTASection } from '@/components/landing/CTASection';
+import { Footer } from '@/components/layout/Footer';
 
 export default function HomePage() {
-  const { activeTab } = usePoetryStore();
-
-  const renderActiveTab = () => {
-    switch (activeTab) {
-      case 'collective':
-        return <CollectiveConsciousness />;
-      case 'fractional':
-        return <FractionalOwnership />;
-      // case 'anonymous':
-      //   return <AnonymousProof />;
-      default:
-        return <CollectiveConsciousness />;
-    }
-  };
-
   return (
-    <div className="p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <motion.h1
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-5xl font-bold mb-4 gradient-text"
-          >
-            Collective Poetry
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="text-xl text-text-secondary"
-          >
-            Where AI, Blockchain, and Poetry Converge
-          </motion.p>
+    <div className="min-h-screen bg-gradient-135 from-purple-900 via-indigo-900 to-blue-900 flex flex-col">
+      {/* Simple header for landing page only */}
+      <header className="glass-card-nav border-b border-white/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            {/* Logo */}
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-90 from-secondary to-primary rounded-lg" />
+              <span className="text-xl font-bold gradient-text">
+                Collective Poetry
+              </span>
+            </div>
+            
+            {/* Simple navigation */}
+            <nav className="flex items-center gap-4">
+              <a href="/login" className="text-text-secondary hover:text-text-primary transition-colors">
+                Login
+              </a>
+              <a href="/signup" className="btn-primary text-sm px-4 py-2">
+                Get Started
+              </a>
+            </nav>
+          </div>
         </div>
-
-        <NavigationTabs />
-        {renderActiveTab()}
-      </div>
+      </header>
+      
+      <main className="grow">
+        <HeroSection />
+        <TrendingPoems />
+        <FeaturesSection />
+        <CTASection />
+      </main>
+      
+      {/* Universal Footer */}
+      <Footer />
     </div>
   );
 }

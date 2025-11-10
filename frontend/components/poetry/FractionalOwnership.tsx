@@ -23,7 +23,7 @@ export const FractionalOwnership: React.FC = () => {
         userId: Date.now().toString(),
         username: `poet_${Math.random().toString(36).substr(2, 5)}`,
         share: 0,
-        joinedAt: undefined
+        joinedAt: new Date()
     };
     setCollaborators([...collaborators, newCollaborator]);
   };

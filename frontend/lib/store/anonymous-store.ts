@@ -14,6 +14,7 @@ interface AnonymousPoem {
   id: string;
   content: string;
   title: string;
+  contentHash?: string;
   createdAt: Date;
   publishedAt: Date | null;
   zkProof: ZKProof | null;

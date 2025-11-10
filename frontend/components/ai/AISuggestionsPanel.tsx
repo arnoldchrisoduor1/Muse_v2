@@ -103,7 +103,7 @@ export function AISuggestionsPanel() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="!p-1 h-6 w-6"
+                    className="p-1 h-6 w-6"
                     onClick={() => handleApplySuggestion(suggestion.id)}
                   >
                     <Check size={12} />
@@ -111,7 +111,7 @@ export function AISuggestionsPanel() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="!p-1 h-6 w-6"
+                    className="p-1 h-6 w-6"
                     onClick={() => handleDismissSuggestion(suggestion.id)}
                   >
                     <X size={12} />

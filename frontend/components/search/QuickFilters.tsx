@@ -75,7 +75,7 @@ export function QuickFilters() {
   animate={{ opacity: 1, scale: 1 }}
   transition={{ delay: index * 0.1 }}
   onClick={filter.action}
-  className={`p-4 rounded-lg bg-gradient-to-br ${filter.color} hover:scale-105 transition-all duration-300 text-left group`}
+  className={`p-4 rounded-lg bg-linear-to-br ${filter.color} hover:scale-105 transition-all duration-300 text-left group`}
 >
   <Icon size={24} className="text-white mb-2 group-hover:scale-110 transition-transform" />
   <div className="text-white font-semibold text-sm mb-1">{filter.label}</div>

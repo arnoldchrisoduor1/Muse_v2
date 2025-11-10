@@ -1,16 +1,13 @@
-// app/layout.tsx
+// app/layout.tsx - Simplified
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import '../app/globals.css'; // keep your global css import
-
-import MainLayout from './(main)/layout'; // <-- relative to app/, adjust if your folder differs
+import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Collective Poetry - Where AI, Blockchain, and Poetry Converge',
   description: 'A revolutionary platform combining collective AI consciousness, fractional NFT ownership, and anonymous publishing for poets.',
-  keywords: 'poetry, blockchain, NFT, AI, collective, anonymous, zero-knowledge',
 };
 
 export default function RootLayout({
@@ -21,10 +18,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        {/* MainLayout is a client component; it's fine to import it here */}
-        <MainLayout>
-          {children}
-        </MainLayout>
+        {/* Individual pages handle their own layout */}
+        {children}
       </body>
     </html>
   );

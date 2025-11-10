@@ -163,7 +163,7 @@ export const useSoloPoetStore = create<SoloPoetState>()(
       await new Promise(resolve => setTimeout(resolve, 3000));
       
       const publishedPoem = {
-        id: `poem_${Date.now()}`,
+        // id: `poem_${Date.now()}`,
         ...draft,
         publishedAt: new Date(),
         nftTokenId: `nft_${Math.random().toString(36).substr(2, 9)}`,

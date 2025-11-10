@@ -1,10 +1,9 @@
-// components/layout/SectionNav.tsx
 "use client";
 import { usePathname } from 'next/navigation';
 
-const sectionMap = {
+const sectionMap: Record<string, Array<{ label: string; href: string; icon: string }>> = {
   '/create': [
-    { label: 'New Poem', href: '/poem/new', icon: '📝' },
+    { label: 'New Poem', href: '/create', icon: '📝' },
     { label: 'Drafts', href: '/create/drafts', icon: '📄' },
     { label: 'AI Assistant', href: '/create/ai', icon: '🤖' },
   ],
@@ -13,14 +12,42 @@ const sectionMap = {
     { label: 'Past Responses', href: '/collective/responses', icon: '📚' },
     { label: 'Training Status', href: '/collective/status', icon: '📊' },
   ],
-  // ... other sections
+  '/collaborate': [
+    { label: 'Active Sessions', href: '/collaborate', icon: '👥' },
+    { label: 'Invites', href: '/collaborate/invites', icon: '📨' },
+    { label: 'Templates', href: '/collaborate/templates', icon: '📋' },
+  ],
+  '/profile': [
+    { label: 'My Poems', href: '/profile', icon: '📖' },
+    { label: 'Collections', href: '/profile/collections', icon: '📚' },
+    { label: 'Analytics', href: '/profile/analytics', icon: '📊' },
+    { label: 'Settings', href: '/profile/settings', icon: '⚙️' },
+  ],
+  '/dao': [
+    { label: 'Proposals', href: '/dao', icon: '🗳️' },
+    { label: 'Treasury', href: '/dao/treasury', icon: '💰' },
+    { label: 'Voting Power', href: '/dao/voting', icon: '⚡' },
+  ],
+  '/marketplace': [
+    { label: 'Browse', href: '/marketplace', icon: '🛒' },
+    { label: 'My Listings', href: '/marketplace/listings', icon: '📋' },
+    { label: 'Licensing', href: '/marketplace/licensing', icon: '📄' },
+  ],
+  '/anonymous': [
+    { label: 'Publish', href: '/anonymous', icon: '👤' },
+    { label: 'Claim Earnings', href: '/anonymous/claim', icon: '💰' },
+    { label: 'My Proofs', href: '/anonymous/proofs', icon: '🔐' },
+  ],
 };
 
 export function SectionNav() {
   const pathname = usePathname();
+  
+  // Find which section we're in based on the path
   const currentSection = Object.keys(sectionMap).find(section => 
     pathname.startsWith(section)
   );
+  
   const sections = currentSection ? sectionMap[currentSection] : [];
 
   if (!sections.length) return null;
