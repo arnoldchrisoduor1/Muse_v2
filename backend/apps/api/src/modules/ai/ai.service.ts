@@ -22,7 +22,11 @@ export class AiService {
 
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('huggingface.apiKey');
-    this.llmModel = this.configService.get<string>('huggingface.llmModel');
+    if (!apiKey) {
+      throw new ServiceUnavailableException('HuggingFace API key not configured');
+    }
+
+    this.llmModel = this.configService.get<string>('huggingface.llmModel') ?? 'gpt2';
     this.hf = new HfInference(apiKey);
   }
 

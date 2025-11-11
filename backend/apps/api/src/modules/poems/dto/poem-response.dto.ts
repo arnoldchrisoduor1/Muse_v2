@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PoemStatus, LicenseType, PoemMood } from '@prisma/client';
 import { UserResponseDto } from '../../users/dto/user-response.dto';
+import { Decimal } from '@prisma/client/runtime/library';
 
 export class PoemResponseDto {
   @ApiProperty()
@@ -82,7 +83,7 @@ export class PoemResponseDto {
   licenseType: LicenseType;
 
   @ApiPropertyOptional()
-  commercialUsePrice: string | null;
+  commercialUsePrice: Decimal | null;
 
   @ApiProperty({ enum: PoemStatus })
   status: PoemStatus;
