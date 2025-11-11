@@ -7,9 +7,34 @@ import {
   ZKProof,
   Poem,
   AnonymousPoem,
+  AIFeedbackResponse,
 } from "@/types/poetry";
+import axios,  { AxiosResponse } from "axios";
+import { usePersistedAuthStore } from "./persisted-auth-store";
+
+const POEMS_API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
+
+// ill now create an axios pattern.
+const poemsApiClient = axios.create({
+  baseURL: `{POEMS_API_URL}/api/v1/poems`,
+  withCredentials: true,
+  timeout: 1000,
+  headers: {
+    'Content-Type' : 'application/json',
+  }
+})
+
+// to get the access token from te persistent store.
+const getAccessToken = () => {
+  const { accessToken } = usePersistedAuthStore.getState();
+  return accessToken;
+}
 
 interface PoetryStore extends PoetryPlatformState {
+
+  draftAIFeedback: AIFeedbackResponse | null;
+  anonymousPoems: AnonymousPoem[];
+  
   // The actions
   setActiveTab: (tab: PoetryPlatformState["activeTab"]) => void;
   setGeneratedPoem: (poem: CollectivePoem | null) => void;
@@ -22,8 +47,9 @@ interface PoetryStore extends PoetryPlatformState {
   queryCollective: (query: string) => Promise<void>;
   createCollaborativePoem: (content: string) => Promise<void>;
   createAnonymousePoem: (content: string) => Promise<void>;
+  getDraftAIFeedback: (title: string, content: string) => Promise<AIFeedbackResponse | null>;
+  clearDraftAIFeedback: () => void;
 
-  anonymousPoems: AnonymousPoem[];
   
   // Enhanced Actions
   createAnonymousPoem: (content: string, options?: {

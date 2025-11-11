@@ -13,9 +13,11 @@ import { SearchPoemsDto } from './dto/search-poems.dto';
 import { PoemResponseDto } from './dto/poem-response.dto';
 import { Prisma, PoemStatus } from '@prisma/client';
 import { createHash } from 'crypto';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class PoemsService {
+  private readonly logger = new Logger(PoemsService.name);
   constructor(
     private prisma: PrismaService,
     private usersService: UsersService,
@@ -65,6 +67,33 @@ export class PoemsService {
     }
 
     return new PoemResponseDto(poem);
+  }
+
+  /**
+ * Get AI feedback for a poem content without storing it (stateless)
+ */
+
+  async getStatelessAIFeedback(title: string, content: string) {
+
+    this.logger.log("Attempting to get ai feedback");
+    const feedback = await this.aiService.getPoemFeedback(title, content);
+    this.logger.log("Response from AI service feedback received", feedback);
+
+    // we'll calculate the final quality score.
+    const qualityScore = this.aiService.calculateQualityScore(
+      content,
+      feedback,
+    );
+
+    // we then return this data.
+    return {
+      ...feedback,
+      qualityScore,
+      overallScore: feedback.overallScore,
+      strengths: feedback.strengths,
+      improvements: feedback.improvements,
+      suggestions: feedback.suggestions,
+    };
   }
 
   /**

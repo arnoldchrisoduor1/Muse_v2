@@ -21,12 +21,18 @@ export class AiService {
   private readonly llmModel: string;
 
   constructor(private configService: ConfigService) {
-    const apiKey = this.configService.get<string>('huggingface.apiKey');
+    const apiKey = this.configService.get<string>('huggingface.apiKey') ||
+                   this.configService.get<string>('HUGGINGFACE_API_KEY');
     if (!apiKey) {
       throw new ServiceUnavailableException('HuggingFace API key not configured');
     }
 
-    this.llmModel = this.configService.get<string>('huggingface.llmModel') ?? 'gpt2';
+    this.llmModel =
+      this.configService.get<string>('huggingface.llmModel') ||
+      this.configService.get<string>('HUGGINGFACE_LLM_MODEL') ||
+      'gpt2';
+
+    // Initialize the HF client
     this.hf = new HfInference(apiKey);
   }
 
@@ -34,39 +40,42 @@ export class AiService {
    * Get AI feedback on a poem
    */
   async getPoemFeedback(title: string, content: string): Promise<AIFeedbackResult> {
-    const startTime = Date.now();
+  const startTime = Date.now();
 
-    try {
-      const prompt = this.buildFeedbackPrompt(title, content);
+  try {
+    const prompt = this.buildFeedbackPrompt(title, content);
 
-      this.logger.log(`Requesting feedback from ${this.llmModel}`);
+    this.logger.log(`Requesting feedback from ${this.llmModel}`);
 
-      const response = await this.hf.textGeneration({
-        model: this.llmModel,
-        inputs: prompt,
-        parameters: {
-          max_new_tokens: 800,
-          temperature: 0.7,
-          top_p: 0.9,
-          return_full_text: false,
-        },
-      });
+    const response = await this.hf.chatCompletion({
+      model: this.llmModel,
+      messages: [
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      max_tokens: 800,
+      temperature: 0.7,
+    });
 
-      const processingTime = Date.now() - startTime;
-      this.logger.log(`Feedback received in ${processingTime}ms`);
+    const feedbackText = response.choices[0].message.content;
+    this.logger.log("Response from the AI API: ", feedbackText);
 
-      // Parse the response
-      const feedback = this.parseFeedbackResponse(response.generated_text);
+    const processingTime = Date.now() - startTime;
+    this.logger.log(`Feedback received in ${processingTime}ms`);
 
-      return feedback;
-    } catch (error) {
-      this.logger.error('Error getting AI feedback:', error);
-      
-      // Return fallback feedback instead of throwing
-      return this.getFallbackFeedback(content);
-    }
+    // Parse the response
+    const feedback = this.parseFeedbackResponse(feedbackText as any);
+
+    return feedback;
+  } catch (error) {
+    this.logger.error('Error getting AI feedback:', error);
+    
+    // Return fallback feedback instead of throwing
+    return this.getFallbackFeedback(content);
   }
-
+}
   /**
    * Calculate quality score based on various metrics
    */
@@ -142,59 +151,134 @@ Keep your feedback constructive, specific, and helpful for a poet looking to imp
   /**
    * Parse the LLM response into structured feedback
    */
-  private parseFeedbackResponse(responseText: string): AIFeedbackResult {
-    try {
-      // Extract score
-      const scoreMatch = responseText.match(/SCORE:\s*(\d+)/i);
-      const overallScore = scoreMatch ? parseInt(scoreMatch[1]) : 70;
+  /**
+ * Parse the LLM response into structured feedback
+ */
+private parseFeedbackResponse(responseText: string): AIFeedbackResult {
+  try {
+    this.logger.log('Parsing feedback response...');
+    
+    // Extract score
+    const scoreMatch = responseText.match(/SCORE:\s*(\d+)/i);
+    const overallScore = scoreMatch ? parseInt(scoreMatch[1]) : 70;
 
-      // Extract strengths
-      const strengthsMatch = responseText.match(/STRENGTHS:([\s\S]*?)(?=IMPROVEMENTS:|$)/i);
-      const strengths = strengthsMatch
-        ? strengthsMatch[1]
-            .split('\n')
-            .filter(line => line.trim().startsWith('-'))
-            .map(line => line.replace(/^-\s*/, '').trim())
-            .filter(Boolean)
-        : ['Shows creative expression', 'Has a clear voice'];
-
-      // Extract improvements
-      const improvementsMatch = responseText.match(/IMPROVEMENTS:([\s\S]*?)(?=SUGGESTIONS:|$)/i);
-      const improvements = improvementsMatch
-        ? improvementsMatch[1]
-            .split('\n')
-            .filter(line => line.trim().startsWith('-'))
-            .map(line => line.replace(/^-\s*/, '').trim())
-            .filter(Boolean)
-        : ['Consider adding more vivid imagery'];
-
-      // Extract suggestions
-      const suggestionsMatch = responseText.match(/SUGGESTIONS:([\s\S]*?)$/i);
-      const suggestionTexts = suggestionsMatch
-        ? suggestionsMatch[1]
-            .split('\n')
-            .filter(line => line.trim().startsWith('-'))
-            .map(line => line.replace(/^-\s*/, '').trim())
-            .filter(Boolean)
-        : ['Experiment with different metaphors'];
-
-      const suggestions = suggestionTexts.map(text => ({
-        type: 'general',
-        suggestion: text,
-        reasoning: 'Based on poetic analysis',
-      }));
-
-      return {
-        overallScore: Math.max(0, Math.min(100, overallScore)),
-        strengths: strengths.slice(0, 3),
-        improvements: improvements.slice(0, 3),
-        suggestions: suggestions.slice(0, 2),
-      };
-    } catch (error) {
-      this.logger.error('Error parsing feedback response:', error);
-      return this.getFallbackFeedback('');
+    // Extract strengths - handle both bullet points (-) and numbered lists (1. 2. 3.)
+    const strengthsMatch = responseText.match(/STRENGTHS:\s*([\s\S]*?)(?=IMPROVEMENTS:|$)/i);
+    const strengths: string[] = [];
+    
+    if (strengthsMatch) {
+      const strengthsText = strengthsMatch[1];
+      
+      // Try to match numbered items (1. **Title**: Description or 1. Description)
+      const numberedItems = strengthsText.match(/\d+\.\s*(?:\*\*[^*]+\*\*:\s*)?([^\n]+)/g);
+      if (numberedItems && numberedItems.length > 0) {
+        numberedItems.forEach(item => {
+          // Remove the number and any markdown formatting
+          const cleaned = item
+            .replace(/^\d+\.\s*/, '')
+            .replace(/\*\*/g, '')
+            .replace(/^[^:]+:\s*/, '') // Remove "Title:" part if present
+            .trim();
+          if (cleaned) strengths.push(cleaned);
+        });
+      } else {
+        // Fallback to bullet points
+        const bulletItems = strengthsText
+          .split('\n')
+          .filter(line => line.trim().startsWith('-'))
+          .map(line => line.replace(/^-\s*/, '').trim())
+          .filter(Boolean);
+        strengths.push(...bulletItems);
+      }
     }
+
+    // Extract improvements - same logic
+    const improvementsMatch = responseText.match(/IMPROVEMENTS:\s*([\s\S]*?)(?=SUGGESTIONS:|$)/i);
+    const improvements: string[] = [];
+    
+    if (improvementsMatch) {
+      const improvementsText = improvementsMatch[1];
+      
+      const numberedItems = improvementsText.match(/\d+\.\s*(?:\*\*[^*]+\*\*:\s*)?([^\n]+)/g);
+      if (numberedItems && numberedItems.length > 0) {
+        numberedItems.forEach(item => {
+          const cleaned = item
+            .replace(/^\d+\.\s*/, '')
+            .replace(/\*\*/g, '')
+            .replace(/^[^:]+:\s*/, '')
+            .trim();
+          if (cleaned) improvements.push(cleaned);
+        });
+      } else {
+        const bulletItems = improvementsText
+          .split('\n')
+          .filter(line => line.trim().startsWith('-'))
+          .map(line => line.replace(/^-\s*/, '').trim())
+          .filter(Boolean);
+        improvements.push(...bulletItems);
+      }
+    }
+
+    // Extract suggestions - same logic
+    const suggestionsMatch = responseText.match(/SUGGESTIONS:\s*([\s\S]*?)$/i);
+    const suggestionTexts: string[] = [];
+    
+    if (suggestionsMatch) {
+      const suggestionsText = suggestionsMatch[1];
+      
+      const numberedItems = suggestionsText.match(/\d+\.\s*(?:\*\*[^*]+\*\*:\s*)?([^\n]+)/g);
+      if (numberedItems && numberedItems.length > 0) {
+        numberedItems.forEach(item => {
+          const cleaned = item
+            .replace(/^\d+\.\s*/, '')
+            .replace(/\*\*/g, '')
+            .replace(/^[^:]+:\s*/, '')
+            .trim();
+          if (cleaned) suggestionTexts.push(cleaned);
+        });
+      } else {
+        const bulletItems = suggestionsText
+          .split('\n')
+          .filter(line => line.trim().startsWith('-'))
+          .map(line => line.replace(/^-\s*/, '').trim())
+          .filter(Boolean);
+        suggestionTexts.push(...bulletItems);
+      }
+    }
+
+    const suggestions = suggestionTexts.map(text => ({
+      type: 'general',
+      suggestion: text,
+      reasoning: 'Based on poetic analysis',
+    }));
+
+    // Fallback to defaults if nothing was extracted
+    const finalStrengths = strengths.length > 0 ? strengths.slice(0, 3) : 
+      ['Shows creative expression', 'Has a clear voice'];
+    
+    const finalImprovements = improvements.length > 0 ? improvements.slice(0, 3) : 
+      ['Consider adding more vivid imagery'];
+    
+    const finalSuggestions = suggestions.length > 0 ? suggestions.slice(0, 2) : 
+      [{
+        type: 'general',
+        suggestion: 'Experiment with different metaphors',
+        reasoning: 'Based on poetic analysis',
+      }];
+
+    this.logger.log(`Parsed: ${finalStrengths.length} strengths, ${finalImprovements.length} improvements, ${finalSuggestions.length} suggestions`);
+
+    return {
+      overallScore: Math.max(0, Math.min(100, overallScore)),
+      strengths: finalStrengths,
+      improvements: finalImprovements,
+      suggestions: finalSuggestions,
+    };
+  } catch (error) {
+    this.logger.error('Error parsing feedback response:', error);
+    return this.getFallbackFeedback('');
   }
+}
 
   /**
    * Fallback feedback when AI service fails

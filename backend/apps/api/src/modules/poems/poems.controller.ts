@@ -26,6 +26,7 @@ import { PoemResponseDto } from './dto/poem-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
+import { GetAIFeedbackDto } from './dto/get-ai-feedback.dto';
 
 @ApiTags('poems')
 @Controller('poems')
@@ -48,7 +49,7 @@ export class PoemsController {
     return this.poemsService.create(user.id, createPoemDto);
   }
 
-  @Post(':id/feedback')
+  @Post('feedback')
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get AI feedback for a poem' })
@@ -57,11 +58,13 @@ export class PoemsController {
     description: 'AI feedback generated successfully',
   })
   @ApiResponse({ status: 403, description: 'You can only get feedback on your own poems' })
-  async getAIFeedback(
-    @Param('id') id: string,
-    @CurrentUser() user: any,
+  async getAIFeedbackDraft(
+    @Body() getAIFeedbackDto: GetAIFeedbackDto,
   ) {
-    return this.poemsService.getAIFeedback(id, user.id);
+    return this.poemsService.getStatelessAIFeedback(
+      getAIFeedbackDto.title,
+      getAIFeedbackDto.content,
+    );
   }
 
   @Public()

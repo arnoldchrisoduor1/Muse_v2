@@ -1,4 +1,3 @@
-// components/poem/PoemEditor.tsx
 "use client";
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -46,7 +45,8 @@ export function PoemEditor() {
 
   const handleGetFeedback = async () => {
     if (currentDraft?.content) {
-      await generateAIFeedback(currentDraft.content);
+      // FIX: Removed currentDraft.content argument as the store fetches it internally
+      await generateAIFeedback();
       setShowAISuggestions(true);
     }
   };

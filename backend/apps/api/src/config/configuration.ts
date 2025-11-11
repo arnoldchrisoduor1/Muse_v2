@@ -15,7 +15,7 @@ export default () => ({
   },
   huggingface: {
     apiKey: process.env.HUGGINGFACE_API_KEY,
-    llmModel: 'meta-llama/Llama-3.2-3B-Instruct',
+    llmModel: process.env.HUGGINGFACE_LLM_MODEL,
     embeddingModel: 'sentence-transformers/all-MiniLM-L6-v2',
   },
   frontend: {

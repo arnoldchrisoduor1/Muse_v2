@@ -18,6 +18,14 @@ export interface PoemBase {
   language?: string;
 }
 
+export interface AIFeedbackResponse {
+  overallScore: number;
+  qualityScore: number;
+  strengths: string[];
+  improvements: string[];
+  suggestions: Record<string, any>; // Adjust this type as needed
+}
+
 // Extended Poem Interface with all properties
 export interface Poem extends PoemBase {
   author: User | string; // string for anonymous authors

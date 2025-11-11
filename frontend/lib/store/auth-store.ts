@@ -4,7 +4,7 @@ import axios, { AxiosError, AxiosResponse, CancelTokenSource } from "axios";
 import { usePersistedAuthStore } from './persisted-auth-store';
 
 // API Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000/api/v1/auth';
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
 // Constants
 const TOKEN_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes
@@ -40,10 +40,9 @@ interface PendingRequest {
   retryCount: number;
 }
 
-
 // Create axios instance with default config
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: `${API_BASE_URL}/api/v1/auth`,
   withCredentials: true, // Use HTTP-only cookies
   timeout: REQUEST_TIMEOUT,
   headers: {

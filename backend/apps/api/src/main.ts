@@ -66,7 +66,7 @@ async function bootstrap() {
   - Poems (CRUD, AI feedback)
   - Likes & Comments (engagement)
   
-  🤖 AI: Llama 3.2 via HuggingFace
+  🤖 AI: EleutherAI/gpt-j-6B 3.2 via HuggingFace
   💾 Database: Neon PostgreSQL with pgvector
   🔐 Auth: JWT with refresh tokens
   `);

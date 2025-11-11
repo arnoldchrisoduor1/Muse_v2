@@ -214,7 +214,7 @@ export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
                 {/* User Info - Hidden on mobile since we show it below */}
                 <div className="hidden sm:flex items-center gap-2 text-sm">
                   <div className="w-6 h-6 bg-gradient-90 from-primary to-secondary rounded-full flex items-center justify-center">
-                    <User size={12} className="text-white" />
+                    <User size={16} className="text-white" />
                   </div>
                   <span className="text-text-primary font-medium">
                     {user?.username || user?.email?.split("@")[0]}
