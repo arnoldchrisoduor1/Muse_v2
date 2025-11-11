@@ -1,9 +1,8 @@
-// src/main.ts
-
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -20,31 +19,57 @@ async function bootstrap() {
   // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // Strip properties that don't have decorators
-      forbidNonWhitelisted: true, // Throw error if unknown properties
-      transform: true, // Auto-transform payloads to DTO types
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
       transformOptions: {
         enableImplicitConversion: true,
       },
     }),
   );
 
+  // Global exception filter
+  app.useGlobalFilters(new AllExceptionsFilter());
+
   // Swagger documentation
   const config = new DocumentBuilder()
     .setTitle('Collective Poetry API')
-    .setDescription('Backend API for Collective Poetry platform')
+    .setDescription(
+      'Backend API for Collective Poetry platform - combining creative writing, blockchain, and LLMs',
+    )
     .setVersion('1.0')
     .addBearerAuth()
+    .addTag('auth', 'Authentication endpoints')
+    .addTag('users', 'User management endpoints')
+    .addTag('poems', 'Poem CRUD and AI feedback')
+    .addTag('likes', 'Poem engagement - likes')
+    .addTag('comments', 'Poem engagement - comments')
+    .addTag('health', 'System health checks')
     .build();
-  
+
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
+
+  console.log(`
+  🚀 Application is running!
   
-  console.log(`🚀 Application is running on: http://localhost:${port}`);
-  console.log(`📚 Swagger docs available at: http://localhost:${port}/api/docs`);
+  📍 API: http://localhost:${port}/api/v1
+  📚 Docs: http://localhost:${port}/api/docs
+  ✅ Health: http://localhost:${port}/health
+  
+  📊 Available modules:
+  - Auth (register, login, JWT)
+  - Users (profiles, follow system)
+  - Poems (CRUD, AI feedback)
+  - Likes & Comments (engagement)
+  
+  🤖 AI: Llama 3.2 via HuggingFace
+  💾 Database: Neon PostgreSQL with pgvector
+  🔐 Auth: JWT with refresh tokens
+  `);
 }
 
 bootstrap();
