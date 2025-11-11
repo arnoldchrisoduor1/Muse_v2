@@ -1,11 +1,13 @@
 "use client";
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // Added useEffect
 import { Eye, EyeOff, Mail, Lock, User, Sparkles, Users, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { useAuthStore } from '@/lib/store/auth-store';
+import { useAuth } from '@/app/hooks/useAuth';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation'; // Added useRouter
+import { useAuthStore } from '@/lib/store/auth-store';
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
@@ -16,6 +18,7 @@ export default function SignUpPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const router = useRouter(); // Initialize router
   
   const { 
     signUp, 
@@ -25,8 +28,17 @@ export default function SignUpPage() {
     isSigningInWithGoogle, 
     isCreatingAnonymous,
     error,
-    clearError 
-  } = useAuthStore();
+    clearError,
+    isAuthenticated,
+    isInitialized
+  } = useAuth();
+
+  // Add useEffect to handle redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push('/explore');
+    }
+  }, [isAuthenticated, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -49,18 +61,37 @@ export default function SignUpPage() {
       useAuthStore.getState().error = 'Password must be at least 6 characters';
       return;
     }
+
+    console.log("Signing up user: ", formData);
     
-    await signUp(formData.email, formData.password, formData.username);
+    try {
+      await signUp(formData.email, formData.password, formData.username);
+      // The redirect will be handled by the auth store now
+    } catch (error) {
+      // Error is already handled by the store
+      console.error('Sign up failed:', error);
+    }
   };
 
   const handleGoogleSignIn = async () => {
-    await signInWithGoogle();
+    try {
+      await signInWithGoogle();
+      // Redirect handled by auth store
+    } catch (error) {
+      console.error('Google sign in failed:', error);
+    }
   };
 
   const handleAnonymousSession = async () => {
-    await createAnonymousSession();
+    try {
+      await createAnonymousSession();
+      // Redirect handled by auth store
+    } catch (error) {
+      console.error('Anonymous session creation failed:', error);
+    }
   };
 
+  // Update the auth options to use proper onClick handlers
   const authOptions = [
     {
       title: 'Full Account',
@@ -68,7 +99,10 @@ export default function SignUpPage() {
       icon: User,
       color: 'text-primary',
       bgColor: 'bg-primary/20',
-      onClick: handleSubmit,
+      onClick: () => {
+        // This will show the form, so we don't trigger signup directly
+        // The form submission handles the actual signup
+      },
       loading: isSigningUp,
       type: 'form' as const
     },
@@ -93,6 +127,18 @@ export default function SignUpPage() {
       type: 'anonymous' as const
     }
   ];
+
+  // If already authenticated, show loading state while redirecting
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-gradient-135 from-purple-900 via-indigo-900 to-blue-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-lg">Redirecting to explore...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-135 from-purple-900 via-indigo-900 to-blue-900 flex items-center justify-center p-4">
@@ -131,8 +177,12 @@ export default function SignUpPage() {
                   transition={{ delay: index * 0.1 }}
                 >
                   <Card 
-                    className="p-6 hover:bg-white/10 transition-all duration-300 cursor-pointer group border-2 border-transparent hover:border-white/20"
-                    // onClick={option.onClick}
+                    className={`p-6 hover:bg-white/10 transition-all duration-300 cursor-pointer group border-2 ${
+                      option.type === 'form' 
+                        ? 'border-primary/30 hover:border-primary/50' 
+                        : 'border-transparent hover:border-white/20'
+                    }`}
+                    // onClick={option.type !== 'form' ? option.onClick : undefined}
                   >
                     <div className="flex items-start gap-4">
                       <div className={`p-3 rounded-xl ${option.bgColor} ${option.color} group-hover:scale-110 transition-transform`}>
@@ -165,7 +215,7 @@ export default function SignUpPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <Card className="p-6">
+            <Card className="p-6 border-primary/20">
               <h3 className="font-semibold text-lg mb-6 text-text-primary">
                 Create Full Account
               </h3>

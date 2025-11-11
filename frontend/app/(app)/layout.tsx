@@ -7,6 +7,7 @@ import { RightSidebar } from '@/components/layout/RightSidebar';
 import { MobileNav } from '@/components/layout/MobileNav';
 import { Footer } from '@/components/layout/Footer';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
@@ -21,6 +22,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [isMobile]);
 
   return (
+    <AuthGuard>
     <div className="min-h-screen bg-gradient-135 from-purple-900 via-indigo-900 to-blue-900 flex flex-col">
       <TopNav 
         onToggleSidebar={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
@@ -64,5 +66,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <MobileNav />
       <Footer />
     </div>
+    </AuthGuard>
   );
 }

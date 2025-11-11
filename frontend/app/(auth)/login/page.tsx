@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useAuthStore } from '@/lib/store/auth-store';
 import Link from 'next/link';
+import { useAuth } from '@/app/hooks/useAuth';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -23,8 +24,9 @@ export default function LoginPage() {
     isSigningInWithGoogle, 
     isCreatingAnonymous,
     error,
-    clearError 
-  } = useAuthStore();
+    clearError,
+    isInitialized
+  } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
