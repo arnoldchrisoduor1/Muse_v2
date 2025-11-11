@@ -1,6 +1,6 @@
 // app/poem/new/page.tsx
 "use client";
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 
 export default function NewPoemPage() {
   const { createNewDraft, currentDraft, saveDraft, isPublishing } = useSoloPoetStore();
+  const [ loading, setLoading ] = useState(false);
 
   useEffect(() => {
     // Create new draft when page loads
@@ -19,8 +20,9 @@ export default function NewPoemPage() {
   }, [createNewDraft, currentDraft]);
 
   const handleSaveDraft = async () => {
+    setLoading(true);
     await saveDraft();
-    // You could add a toast notification here
+    setLoading(false);
   };
 
   return (
@@ -51,7 +53,7 @@ export default function NewPoemPage() {
           onClick={handleSaveDraft}
           disabled={!currentDraft?.content.trim()}
         >
-          Save Draft
+          { loading ? 'Saving...' : 'Save Draft' }
         </Button>
       </motion.div>
 

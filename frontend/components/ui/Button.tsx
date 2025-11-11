@@ -41,7 +41,7 @@ export const Button: React.FC<ButtonProps> = ({
       whileHover={{ scale: disabled ? 1 : 1.02 }}
       whileTap={{ scale: disabled ? 1 : 0.98 }}
       className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className} ${
-        disabled ? 'opacity-50 cursor-not-allowed' : ''
+        disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
       }`}
       disabled={disabled || loading}
       {...(props as React.ComponentProps<typeof motion.button>)}

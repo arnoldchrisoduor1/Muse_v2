@@ -45,7 +45,6 @@ export function PoemEditor() {
 
   const handleGetFeedback = async () => {
     if (currentDraft?.content) {
-      // FIX: Removed currentDraft.content argument as the store fetches it internally
       await generateAIFeedback();
       setShowAISuggestions(true);
     }

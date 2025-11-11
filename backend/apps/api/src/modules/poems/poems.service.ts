@@ -28,6 +28,7 @@ export class PoemsService {
    * Create a new poem
    */
   async create(userId: string, createPoemDto: CreatePoemDto): Promise<PoemResponseDto> {
+    this.logger.log("Saving poem")
     // Generate excerpt (first 150 chars)
     const excerpt = this.generateExcerpt(createPoemDto.content);
 
@@ -60,6 +61,8 @@ export class PoemsService {
         author: true,
       },
     });
+
+    this.logger.log("Poem saved successfully");
 
     // Update user's poem count if published
     if (status === PoemStatus.PUBLISHED) {
