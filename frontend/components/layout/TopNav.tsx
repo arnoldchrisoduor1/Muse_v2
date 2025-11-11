@@ -17,52 +17,16 @@ import { useAuth } from "@/app/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { useAuthStore } from "@/lib/store/auth-store";
+import { usePersistedAuthStore } from "@/lib/store/persisted-auth-store";
 
 interface TopNavProps {
   onToggleSidebar: () => void;
   isSidebarOpen: boolean;
 }
 
-const majorPages = [
-  {
-    id: "create",
-    label: "Create",
-    icon: Pen,
-    href: "/create",
-    requiresAuth: true,
-  },
-  {
-    id: "collective",
-    label: "Collective",
-    icon: Sparkles,
-    href: "/collective",
-    requiresAuth: false,
-  },
-  {
-    id: "collaborate",
-    label: "Collaborate",
-    icon: Users,
-    href: "/collaborate",
-    requiresAuth: true,
-  },
-  {
-    id: "explore",
-    label: "Explore",
-    icon: Compass,
-    href: "/explore",
-    requiresAuth: true,
-  },
-  { id: "dao", label: "DAO", icon: Gem, href: "/dao", requiresAuth: true },
-  {
-    id: "profile",
-    label: "Profile",
-    icon: User,
-    href: "/profile",
-    requiresAuth: true,
-  },
-] as const;
-
+// We'll create the majorPages array inside the component to access the user data
 const publicPages = ["/", "/login", "/signup"];
 
 export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
@@ -71,6 +35,71 @@ export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  console.log("Current user: ", user);
+  console.log("Authentication state:", isAuthenticated);
+
+  // Create majorPages array with dynamic profile link
+  const majorPages = useMemo(() => [
+    {
+      id: "create",
+      label: "Create",
+      icon: Pen,
+      href: "/create",
+      requiresAuth: true,
+    },
+    {
+      id: "collective",
+      label: "Collective",
+      icon: Sparkles,
+      href: "/collective",
+      requiresAuth: false,
+    },
+    {
+      id: "collaborate",
+      label: "Collaborate",
+      icon: Users,
+      href: "/collaborate",
+      requiresAuth: true,
+    },
+    {
+      id: "explore",
+      label: "Explore",
+      icon: Compass,
+      href: "/explore",
+      requiresAuth: true,
+    },
+    { id: "dao", label: "DAO", icon: Gem, href: "/dao", requiresAuth: true },
+    {
+      id: "profile",
+      label: "Profile",
+      icon: User,
+      href: user?.username ? `/profile/${user.username}` : "/profile", // Dynamic profile link
+      requiresAuth: true,
+    },
+  ] as const, [user?.username]); // Recreate when username changes
+
+  useEffect(() => {
+  const unsubscribe = useAuthStore.subscribe((state) => {
+    console.log('Auth store changed:', {
+      user: state.user?.username,
+      isAuthenticated: state.isAuthenticated,
+      isLoading: state.isLoading,
+    });
+  });
+
+  const unsubscribePersisted = usePersistedAuthStore.subscribe((state) => {
+    console.log('Persisted store changed:', {
+      user: state.user?.username,
+      isAuthenticated: state.isAuthenticated,
+    });
+  });
+
+  return () => {
+    unsubscribe();
+    unsubscribePersisted();
+  };
+}, []);
 
   // Check authentication status and redirect if needed
   useEffect(() => {
@@ -90,7 +119,7 @@ export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
     };
 
     checkAuth();
-  }, [isAuthenticated, pathname, router]);
+  }, [isAuthenticated, pathname, router, majorPages]);
 
   type PageId = (typeof majorPages)[number]["id"];
 

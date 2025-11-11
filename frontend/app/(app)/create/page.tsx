@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/Button';
 import { useSoloPoetStore } from '@/lib/store/solo-poet-store';
 
 export default function CreatePage() {
-  const { drafts, loadDrafts } = useSoloPoetStore();
+  const { drafts, loadPoems } = useSoloPoetStore();
 
   useEffect(() => {
-    loadDrafts();
-  }, [loadDrafts]);
+    loadPoems();
+  }, [loadPoems]);
 
   const quickActions = [
     {
@@ -125,9 +125,9 @@ export default function CreatePage() {
                       {draft.content || 'No content yet...'}
                     </p>
                     <div className="flex items-center justify-between text-xs text-text-muted">
-                      <span>
+                      {/* <span>
                         {new Date(draft.updatedAt).toLocaleDateString()}
-                      </span>
+                      </span> */}
                       {draft.qualityScore && (
                         <span className={`px-2 py-1 rounded-full ${
                           draft.qualityScore >= 85 ? 'bg-accent/20 text-accent' :

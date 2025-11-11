@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import axios, { AxiosError, AxiosResponse, CancelTokenSource } from "axios";
-import { usePersistedAuthStore } from './persisted-auth-store';
+import { usePersistedAuthStore } from "./persisted-auth-store";
 
 // API Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
 // Constants
 const TOKEN_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes
@@ -46,7 +47,7 @@ const apiClient = axios.create({
   withCredentials: true, // Use HTTP-only cookies
   timeout: REQUEST_TIMEOUT,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
@@ -54,16 +55,16 @@ const apiClient = axios.create({
 const cancelTokenSources = new Map<string, CancelTokenSource>();
 
 // Offline queue
-let isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+let isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
 const pendingRequests: PendingRequest[] = [];
 
 // Network status listener
-if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => {
+if (typeof window !== "undefined") {
+  window.addEventListener("online", () => {
     isOnline = true;
     processPendingRequests();
   });
-  window.addEventListener('offline', () => {
+  window.addEventListener("offline", () => {
     isOnline = false;
   });
 }
@@ -87,17 +88,17 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  
+
   // Auth methods state
   isSigningIn: boolean;
   isSigningUp: boolean;
   isSigningInWithGoogle: boolean;
   isCreatingAnonymous: boolean;
-  
+
   // System state
   isOnline: boolean;
   error: string | null;
-  
+
   // Actions
   signUp: (email: string, password: string, username: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
@@ -110,28 +111,37 @@ interface AuthState {
   getCurrentUser: () => Promise<void>;
   cancelRequest: (requestId: string) => void;
   setOnlineStatus: (status: boolean) => void;
-  handleSuccessfulAuth: (user: User, tokens?: { accessToken?: string; refreshToken?: string }) => void;
+  handleSuccessfulAuth: (
+    user: User,
+    tokens?: { accessToken?: string; refreshToken?: string }
+  ) => void;
 }
 
 // Helper functions
 const getErrorMessage = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError<ErrorResponse>;
-    return axiosError.response?.data?.message || 
-           axiosError.response?.data?.error || 
-           axiosError.message || 
-           'An unexpected error occurred';
+    return (
+      axiosError.response?.data?.message ||
+      axiosError.response?.data?.error ||
+      axiosError.message ||
+      "An unexpected error occurred"
+    );
   }
-  
+
   if (error instanceof Error) {
     return error.message;
   }
-  
-  return 'An unexpected error occurred';
+
+  return "An unexpected error occurred";
 };
 
 // Sync function between stores
-const syncAuthState = (user: User | null, isAuthenticated: boolean, tokens?: { accessToken?: string; refreshToken?: string }) => {
+const syncAuthState = (
+  user: User | null,
+  isAuthenticated: boolean,
+  tokens?: { accessToken?: string; refreshToken?: string }
+) => {
   usePersistedAuthStore.setState({
     user,
     isAuthenticated,
@@ -140,11 +150,10 @@ const syncAuthState = (user: User | null, isAuthenticated: boolean, tokens?: { a
   });
 };
 
+const delay = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
-const delay = (ms: number): Promise<void> => 
-  new Promise(resolve => setTimeout(resolve, ms));
-
-const generateRequestId = (): string => 
+const generateRequestId = (): string =>
   `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 // Token management with fallback to localStorage (for refresh token)
@@ -153,26 +162,27 @@ const TokenManager = {
     if (tokens.accessToken) {
       // For access token, we'll rely on HTTP-only cookies primarily
       // But we can store in localStorage as fallback for certain scenarios
-      localStorage.setItem('accessToken', tokens.accessToken);
+      localStorage.setItem("accessToken", tokens.accessToken);
     }
     if (tokens.refreshToken) {
-      localStorage.setItem('refreshToken', tokens.refreshToken);
+      localStorage.setItem("refreshToken", tokens.refreshToken);
     }
   },
 
-  getAccessToken: (): string | null => 
-    localStorage.getItem('accessToken'),
+  getAccessToken: (): string | null => localStorage.getItem("accessToken"),
 
-  getRefreshToken: (): string | null => 
-    localStorage.getItem('refreshToken'),
+  getRefreshToken: (): string | null => localStorage.getItem("refreshToken"),
 
   clearTokens: (): void => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
   },
 
-  hasTokens: (): boolean => 
-    !!(localStorage.getItem('accessToken') || localStorage.getItem('refreshToken')),
+  hasTokens: (): boolean =>
+    !!(
+      localStorage.getItem("accessToken") ||
+      localStorage.getItem("refreshToken")
+    ),
 };
 
 // Retry logic with exponential backoff
@@ -182,13 +192,13 @@ const executeWithRetry = async <T>(
   maxRetries: number = MAX_RETRY_ATTEMPTS
 ): Promise<T> => {
   let lastError: Error;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await operation();
     } catch (error) {
       lastError = error as Error;
-      
+
       // Don't retry on certain errors
       if (axios.isAxiosError(error)) {
         const status = error.response?.status;
@@ -196,15 +206,17 @@ const executeWithRetry = async <T>(
           throw error;
         }
       }
-      
+
       if (attempt < maxRetries) {
         const delayMs = RETRY_DELAY * Math.pow(2, attempt);
-        console.warn(`Retrying ${operationName}, attempt ${attempt + 1} after ${delayMs}ms`);
+        console.warn(
+          `Retrying ${operationName}, attempt ${attempt + 1} after ${delayMs}ms`
+        );
         await delay(delayMs);
       }
     }
   }
-  
+
   throw lastError!;
 };
 
@@ -228,7 +240,9 @@ const processPendingRequests = async (): Promise<void> => {
 };
 
 // Queue request for offline processing
-const queueRequest = (request: Omit<PendingRequest, 'resolve' | 'reject' | 'retryCount'>): Promise<any> => {
+const queueRequest = (
+  request: Omit<PendingRequest, "resolve" | "reject" | "retryCount">
+): Promise<any> => {
   return new Promise((resolve, reject) => {
     pendingRequests.push({
       ...request,
@@ -243,28 +257,30 @@ const queueRequest = (request: Omit<PendingRequest, 'resolve' | 'reject' | 'retr
 apiClient.interceptors.request.use(
   (config) => {
     const token = TokenManager.getAccessToken();
-    if (token && !config.headers['Authorization']) {
+    if (token && !config.headers["Authorization"]) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     // Add request ID for cancellation
     const requestId = generateRequestId();
-    config.headers['X-Request-ID'] = requestId;
-    
+    config.headers["X-Request-ID"] = requestId;
+
     const source = axios.CancelToken.source();
     cancelTokenSources.set(requestId, source);
     config.cancelToken = source.token;
-    
+
     return config;
   },
   (error) => Promise.reject(error)
 );
 
 // Response interceptor with token refresh logic
+// Replace the response interceptor in auth-store.ts with this:
+
 apiClient.interceptors.response.use(
   (response) => {
     // Clean up cancellation token
-    const requestId = response.config.headers?.['X-Request-ID'];
+    const requestId = response.config.headers?.["X-Request-ID"];
     if (requestId) {
       cancelTokenSources.delete(requestId);
     }
@@ -272,32 +288,38 @@ apiClient.interceptors.response.use(
   },
   async (error: AxiosError) => {
     const originalRequest = error.config as any;
-    
+
     // Clean up cancellation token
-    const requestId = originalRequest?.headers?.['X-Request-ID'];
+    const requestId = originalRequest?.headers?.["X-Request-ID"];
     if (requestId) {
       cancelTokenSources.delete(requestId);
     }
 
+    // Handle 401 errors with token refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
+      console.log('Got 401, attempting token refresh...');
+      
       try {
         await useAuthStore.getState().refreshToken();
-        
-        // Retry the original request with new token
         const token = TokenManager.getAccessToken();
+        
         if (token) {
           originalRequest.headers.Authorization = `Bearer ${token}`;
+          return apiClient(originalRequest);
         }
-        
-        return apiClient(originalRequest);
       } catch (refreshError) {
-        useAuthStore.getState().resetAuthState();
+        console.error('Token refresh failed in interceptor:', refreshError);
+        
+        // Don't immediately clear state here - let the refresh endpoint handler do it
+        // This prevents clearing state on temporary network issues
+        
+        // Only reject the error, don't clear persisted state
         return Promise.reject(refreshError);
       }
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -308,7 +330,7 @@ const scheduleTokenRefresh = (expiresIn?: number): void => {
     clearTimeout(refreshTimeout);
   }
 
-  const refreshTime = expiresIn 
+  const refreshTime = expiresIn
     ? Math.max(expiresIn * 1000 - 60000, 30000) // 1 minute before expiry or 30s minimum
     : TOKEN_REFRESH_INTERVAL;
 
@@ -316,7 +338,7 @@ const scheduleTokenRefresh = (expiresIn?: number): void => {
     try {
       await useAuthStore.getState().refreshToken();
     } catch (error) {
-      console.error('Token refresh failed:', error);
+      console.error("Token refresh failed:", error);
       // Retry after shorter interval on failure
       setTimeout(() => {
         useAuthStore.getState().refreshToken().catch(console.error);
@@ -326,17 +348,33 @@ const scheduleTokenRefresh = (expiresIn?: number): void => {
 };
 
 export const useAuthStore = create<AuthState>()(
-  devtools((set, get) => ({
-    // Initial State
-    user: null,
-    isAuthenticated: false,
-    isLoading: false,
-    isSigningIn: false,
-    isSigningUp: false,
-    isSigningInWithGoogle: false,
-    isCreatingAnonymous: false,
-   handleSuccessfulAuth: (user: User, tokens?: { accessToken?: string; refreshToken?: string }) => {
-  set({ 
+  
+  devtools(
+    (set, get) => ({
+      // Initial State
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      isSigningIn: false,
+      isSigningUp: false,
+      isSigningInWithGoogle: false,
+      isCreatingAnonymous: false,
+      handleSuccessfulAuth: (
+  user: User,
+  tokens?: { accessToken?: string; refreshToken?: string }
+) => {
+  console.log('🎉 handleSuccessfulAuth called:', {
+    user: user.username,
+    hasTokens: !!tokens
+  });
+
+  // CRITICAL: Store tokens first
+  if (tokens?.accessToken || tokens?.refreshToken) {
+    TokenManager.setTokens(tokens);
+  }
+
+  // Set auth store state (user + isAuthenticated together)
+  set({
     user,
     isAuthenticated: true,
     isLoading: false,
@@ -344,370 +382,450 @@ export const useAuthStore = create<AuthState>()(
     isSigningIn: false,
     isSigningInWithGoogle: false,
     isCreatingAnonymous: false,
-    error: null
+    error: null,
   });
 
-  // Sync with persisted store
+  // CRITICAL: Sync with persisted store
   syncAuthState(user, true, tokens);
 
+  console.log('✅ Auth state set:', {
+    storeUser: useAuthStore.getState().user?.username,
+    storeAuth: useAuthStore.getState().isAuthenticated,
+    persistedUser: usePersistedAuthStore.getState().user?.username,
+    persistedAuth: usePersistedAuthStore.getState().isAuthenticated,
+  });
+
   // Redirect to explore page
-  if (typeof window !== 'undefined') {
-    window.location.href = '/explore';
+  if (typeof window !== "undefined") {
+    window.location.href = "/explore";
   }
 },
-    isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
-    error: null,
+      isOnline: typeof navigator !== "undefined" ? navigator.onLine : true,
+      error: null,
 
-    // Sign Up with Email/Password
-    signUp: async (email: string, password: string, username: string) => {
-      const requestId = generateRequestId();
-      
-      return executeWithRetry(async () => {
-        set({ isSigningUp: true, error: null });
-        
-        try {
-          if (!get().isOnline) {
-            throw new Error('Network offline. Please check your connection.');
+      // Sign Up with Email/Password
+      signUp: async (email: string, password: string, username: string) => {
+        const requestId = generateRequestId();
+
+        return executeWithRetry(async () => {
+          set({ isSigningUp: true, error: null });
+
+          try {
+            if (!get().isOnline) {
+              throw new Error("Network offline. Please check your connection.");
+            }
+
+            const response: AxiosResponse<AuthResponse> = await apiClient.post(
+              "/register",
+              {
+                email,
+                password,
+                username,
+              }
+            );
+
+            const { user, accessToken, refreshToken, expiresIn } =
+              response.data;
+
+            // Store tokens
+            TokenManager.setTokens({ accessToken, refreshToken });
+
+            // Schedule token refresh
+            if (expiresIn || accessToken) {
+              scheduleTokenRefresh(expiresIn);
+            }
+
+            get().handleSuccessfulAuth(user, { accessToken, refreshToken });
+          } catch (error) {
+            set({
+              error: getErrorMessage(error),
+              isSigningUp: false,
+            });
+            throw error;
           }
+        }, `signUp-${requestId}`);
+      },
 
-          const response: AxiosResponse<AuthResponse> = await apiClient.post('/register', {
-            email,
-            password,
-            username,
-          });
+      // Sign In with Email/Password
+      signIn: async (email: string, password: string) => {
+        const requestId = generateRequestId();
 
-          const { user, accessToken, refreshToken, expiresIn } = response.data;
+        return executeWithRetry(async () => {
+          set({ isSigningIn: true, error: null });
 
-          // Store tokens
-          TokenManager.setTokens({ accessToken, refreshToken });
+          try {
+            if (!get().isOnline) {
+              return queueRequest({
+                url: "/login",
+                method: "POST",
+                data: { email, password },
+              });
+            }
 
-          // Schedule token refresh
-          if (expiresIn || accessToken) {
-            scheduleTokenRefresh(expiresIn);
+            const response: AxiosResponse<AuthResponse> = await apiClient.post(
+              "/login",
+              {
+                email,
+                password,
+              }
+            );
+
+            const { user, accessToken, refreshToken, expiresIn } =
+              response.data;
+
+            TokenManager.setTokens({ accessToken, refreshToken });
+
+            if (expiresIn || accessToken) {
+              scheduleTokenRefresh(expiresIn);
+            }
+
+            get().handleSuccessfulAuth(user, { accessToken, refreshToken });
+          } catch (error) {
+            set({
+              error: getErrorMessage(error),
+              isSigningIn: false,
+            });
+            throw error;
           }
+        }, `signIn-${requestId}`);
+      },
 
-         get().handleSuccessfulAuth(user, { accessToken, refreshToken });
-          
-        } catch (error) {
-          set({ 
-            error: getErrorMessage(error),
-            isSigningUp: false 
-          });
-          throw error;
-        }
-      }, `signUp-${requestId}`);
-    },
+      // Sign In with Google
+      signInWithGoogle: async () => {
+        const requestId = generateRequestId();
 
-    // Sign In with Email/Password
-    signIn: async (email: string, password: string) => {
-      const requestId = generateRequestId();
-      
-      return executeWithRetry(async () => {
-        set({ isSigningIn: true, error: null });
-        
-        try {
-          if (!get().isOnline) {
-            return queueRequest({
-              url: '/login',
-              method: 'POST',
-              data: { email, password }
+        return executeWithRetry(async () => {
+          set({ isSigningInWithGoogle: true, error: null });
+
+          try {
+            if (!get().isOnline) {
+              throw new Error("Network offline. Please check your connection.");
+            }
+
+            // This would typically redirect to backend OAuth endpoint
+            // For direct API call, adjust based on your backend implementation
+            const response: AxiosResponse<AuthResponse> = await apiClient.post(
+              "/google",
+              {}
+            );
+
+            const { user, accessToken, refreshToken, expiresIn } =
+              response.data;
+
+            TokenManager.setTokens({ accessToken, refreshToken });
+
+            if (expiresIn || accessToken) {
+              scheduleTokenRefresh(expiresIn);
+            }
+
+            set({
+              user,
+              isAuthenticated: true,
+              isSigningInWithGoogle: false,
+              error: null,
+            });
+          } catch (error) {
+            set({
+              error: getErrorMessage(error),
+              isSigningInWithGoogle: false,
+            });
+            throw error;
+          }
+        }, `signInWithGoogle-${requestId}`);
+      },
+
+      // Create Anonymous Session
+      createAnonymousSession: async () => {
+        const requestId = generateRequestId();
+
+        return executeWithRetry(async () => {
+          set({ isCreatingAnonymous: true, error: null });
+
+          try {
+            if (!get().isOnline) {
+              return queueRequest({
+                url: "/anonymous",
+                method: "POST",
+                data: {},
+              });
+            }
+
+            const response: AxiosResponse<AuthResponse> = await apiClient.post(
+              "/anonymous",
+              {}
+            );
+
+            const { user, accessToken, refreshToken, expiresIn } =
+              response.data;
+
+            TokenManager.setTokens({ accessToken, refreshToken });
+
+            if (expiresIn || accessToken) {
+              scheduleTokenRefresh(expiresIn);
+            }
+
+            set({
+              user,
+              isAuthenticated: true,
+              isCreatingAnonymous: false,
+              error: null,
+            });
+          } catch (error) {
+            set({
+              error: getErrorMessage(error),
+              isCreatingAnonymous: false,
+            });
+            throw error;
+          }
+        }, `createAnonymousSession-${requestId}`);
+      },
+
+      // Sign Out
+      signOut: async () => {
+        const requestId = generateRequestId();
+
+        return executeWithRetry(async () => {
+          set({ isLoading: true });
+
+          try {
+            if (get().isOnline) {
+              await apiClient.post("/logout");
+            }
+
+            // Clear local storage and state regardless of API call success
+            TokenManager.clearTokens();
+
+            if (refreshTimeout) {
+              clearTimeout(refreshTimeout);
+              refreshTimeout = null;
+            }
+
+            set({
+              user: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+            });
+          } catch (error) {
+            // Even if API call fails, clear local state
+            TokenManager.clearTokens();
+
+            if (refreshTimeout) {
+              clearTimeout(refreshTimeout);
+              refreshTimeout = null;
+            }
+
+            set({
+              user: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: getErrorMessage(error),
             });
           }
+        }, `signOut-${requestId}`);
+      },
 
-          const response: AxiosResponse<AuthResponse> = await apiClient.post('/login', {
-            email,
-            password,
-          });
+      // Refresh Token
+      // Replace the refreshToken method in your auth store with this:
 
-          const { user, accessToken, refreshToken, expiresIn } = response.data;
+refreshToken: async () => {
+  const requestId = generateRequestId();
 
-          TokenManager.setTokens({ accessToken, refreshToken });
+  return executeWithRetry(async () => {
+    try {
+      const refreshToken = TokenManager.getRefreshToken();
+      if (!refreshToken) {
+        throw new Error("No refresh token available");
+      }
 
-          if (expiresIn || accessToken) {
-            scheduleTokenRefresh(expiresIn);
-          }
+      const response: AxiosResponse<{
+        accessToken: string;
+        refreshToken?: string;
+        expiresIn?: number;
+      }> = await apiClient.post("/refresh", {
+        refreshToken,
+      });
 
-          get().handleSuccessfulAuth(user, { accessToken, refreshToken });
-          
-        } catch (error) {
-          set({ 
-            error: getErrorMessage(error),
-            isSigningIn: false 
-          });
-          throw error;
-        }
-      }, `signIn-${requestId}`);
-    },
+      TokenManager.setTokens({
+        accessToken: response.data.accessToken,
+        refreshToken: response.data.refreshToken,
+      });
 
-    // Sign In with Google
-    signInWithGoogle: async () => {
-      const requestId = generateRequestId();
+      // Update persisted store with new tokens
+      usePersistedAuthStore.setState({
+        accessToken: response.data.accessToken,
+        refreshToken: response.data.refreshToken,
+      });
+
+      // Reschedule next refresh
+      scheduleTokenRefresh(response.data.expiresIn);
+
+      console.log('Token refreshed successfully');
+      return response.data.accessToken;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
       
-      return executeWithRetry(async () => {
-        set({ isSigningInWithGoogle: true, error: null });
+      // Only clear tokens and state if it's a definitive auth failure
+      // Don't clear on network errors
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
         
-        try {
-          if (!get().isOnline) {
-            throw new Error('Network offline. Please check your connection.');
-          }
-
-          // This would typically redirect to backend OAuth endpoint
-          // For direct API call, adjust based on your backend implementation
-          const response: AxiosResponse<AuthResponse> = await apiClient.post('/google', {});
-          
-          const { user, accessToken, refreshToken, expiresIn } = response.data;
-
-          TokenManager.setTokens({ accessToken, refreshToken });
-
-          if (expiresIn || accessToken) {
-            scheduleTokenRefresh(expiresIn);
-          }
-
-          set({ 
-            user,
-            isAuthenticated: true,
-            isSigningInWithGoogle: false,
-            error: null
-          });
-          
-        } catch (error) {
-          set({ 
-            error: getErrorMessage(error),
-            isSigningInWithGoogle: false 
-          });
-          throw error;
-        }
-      }, `signInWithGoogle-${requestId}`);
-    },
-
-    // Create Anonymous Session
-    createAnonymousSession: async () => {
-      const requestId = generateRequestId();
-      
-      return executeWithRetry(async () => {
-        set({ isCreatingAnonymous: true, error: null });
-        
-        try {
-          if (!get().isOnline) {
-            return queueRequest({
-              url: '/anonymous',
-              method: 'POST',
-              data: {}
-            });
-          }
-
-          const response: AxiosResponse<AuthResponse> = await apiClient.post('/anonymous', {});
-
-          const { user, accessToken, refreshToken, expiresIn } = response.data;
-
-          TokenManager.setTokens({ accessToken, refreshToken });
-
-          if (expiresIn || accessToken) {
-            scheduleTokenRefresh(expiresIn);
-          }
-
-          set({ 
-            user,
-            isAuthenticated: true,
-            isCreatingAnonymous: false,
-            error: null
-          });
-          
-        } catch (error) {
-          set({ 
-            error: getErrorMessage(error),
-            isCreatingAnonymous: false 
-          });
-          throw error;
-        }
-      }, `createAnonymousSession-${requestId}`);
-    },
-
-    // Sign Out
-    signOut: async () => {
-      const requestId = generateRequestId();
-      
-      return executeWithRetry(async () => {
-        set({ isLoading: true });
-        
-        try {
-          if (get().isOnline) {
-            await apiClient.post('/logout');
-          }
-          
-          // Clear local storage and state regardless of API call success
+        // Clear only on auth-related errors (401, 403)
+        if (status === 401 || status === 403) {
+          console.log('Auth tokens invalid, clearing state');
           TokenManager.clearTokens();
-          
-          if (refreshTimeout) {
-            clearTimeout(refreshTimeout);
-            refreshTimeout = null;
-          }
-
+          usePersistedAuthStore.setState({
+            user: null,
+            isAuthenticated: false,
+            accessToken: null,
+            refreshToken: null,
+          });
           set({
             user: null,
             isAuthenticated: false,
-            isLoading: false,
-            error: null
+            error: 'Session expired. Please log in again.',
           });
-          
-        } catch (error) {
-          // Even if API call fails, clear local state
-          TokenManager.clearTokens();
-          
-          if (refreshTimeout) {
-            clearTimeout(refreshTimeout);
-            refreshTimeout = null;
-          }
-
+        } else {
+          // Network error or server error - don't clear state
+          console.warn('Token refresh failed due to network/server error, keeping state');
           set({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: getErrorMessage(error)
+            error: 'Unable to refresh session. Please check your connection.',
           });
         }
-      }, `signOut-${requestId}`);
-    },
-
-    // Refresh Token
-    refreshToken: async () => {
-      const requestId = generateRequestId();
-      
-      return executeWithRetry(async () => {
-        try {
-          const refreshToken = TokenManager.getRefreshToken();
-          if (!refreshToken) {
-            throw new Error('No refresh token available');
-          }
-
-          const response: AxiosResponse<{ 
-            accessToken: string; 
-            refreshToken?: string;
-            expiresIn?: number;
-          }> = await apiClient.post('/refresh', {
-            refreshToken,
-          });
-
-          TokenManager.setTokens({
-            accessToken: response.data.accessToken,
-            refreshToken: response.data.refreshToken,
-          });
-
-          // Reschedule next refresh
-          scheduleTokenRefresh(response.data.expiresIn);
-
-          return response.data.accessToken;
-          
-        } catch (error) {
-          TokenManager.clearTokens();
-          set({ 
-            user: null,
-            isAuthenticated: false,
-            error: getErrorMessage(error)
-          });
-          throw error;
-        }
-      }, `refreshToken-${requestId}`);
-    },
-
-    // Get Current User
-    getCurrentUser: async () => {
-      const requestId = generateRequestId();
-      
-      return executeWithRetry(async () => {
-        set({ isLoading: true, error: null });
-        
-        try {
-          if (!get().isOnline && TokenManager.hasTokens()) {
-            // If offline but have tokens, assume user is authenticated
-            set({ isLoading: false });
-            return;
-          }
-
-          const response: AxiosResponse<{ user: User }> = await apiClient.get('/me');
-          
-          set({ 
-            user: response.data.user,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null
-          });
-          
-        } catch (error) {
-          TokenManager.clearTokens();
-          set({ 
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: getErrorMessage(error)
-          });
-          throw error;
-        }
-      }, `getCurrentUser-${requestId}`);
-    },
-
-    // Cancel specific request
-    cancelRequest: (requestId: string) => {
-      const source = cancelTokenSources.get(requestId);
-      if (source) {
-        source.cancel('Request cancelled by user');
-        cancelTokenSources.delete(requestId);
       }
-    },
-
-    // Set online status
-    setOnlineStatus: (status: boolean) => {
-      set({ isOnline: status });
-      if (status) {
-        processPendingRequests();
-      }
-    },
-
-    // Clear errors
-    clearError: () => {
-      set({ error: null });
-    },
-
-    // Reset auth state
-    resetAuthState: () => {
-  TokenManager.clearTokens();
-  
-  if (refreshTimeout) {
-    clearTimeout(refreshTimeout);
-    refreshTimeout = null;
-  }
-
-  // Clear persisted store
-  usePersistedAuthStore.setState({
-    user: null,
-    isAuthenticated: false,
-    accessToken: null,
-    refreshToken: null,
-  });
-
-  set({
-    user: null,
-    isAuthenticated: false,
-    isLoading: false,
-    isSigningIn: false,
-    isSigningUp: false,
-    isSigningInWithGoogle: false,
-    isCreatingAnonymous: false,
-    error: null,
-  });
+      
+      throw error;
+    }
+  }, `refreshToken-${requestId}`);
 },
-  }), {
-    name: 'auth-store',
-  })
+
+      // Get Current User
+      getCurrentUser: async () => {
+        const requestId = generateRequestId();
+
+        return executeWithRetry(async () => {
+          set({ isLoading: true, error: null });
+
+          try {
+            if (!get().isOnline && TokenManager.hasTokens()) {
+              // If offline but have tokens, assume user is authenticated
+              set({ isLoading: false });
+              return;
+            }
+
+            const response: AxiosResponse<{ user: User }> = await apiClient.get(
+              "/me"
+            );
+
+            set({
+              user: response.data.user,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+            });
+          } catch (error) {
+            TokenManager.clearTokens();
+            set({
+              user: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: getErrorMessage(error),
+            });
+            throw error;
+          }
+        }, `getCurrentUser-${requestId}`);
+      },
+
+      // Cancel specific request
+      cancelRequest: (requestId: string) => {
+        const source = cancelTokenSources.get(requestId);
+        if (source) {
+          source.cancel("Request cancelled by user");
+          cancelTokenSources.delete(requestId);
+        }
+      },
+
+      // Set online status
+      setOnlineStatus: (status: boolean) => {
+        set({ isOnline: status });
+        if (status) {
+          processPendingRequests();
+        }
+      },
+
+      // Clear errors
+      clearError: () => {
+        set({ error: null });
+      },
+
+      // Reset auth state
+      resetAuthState: () => {
+        TokenManager.clearTokens();
+
+        if (refreshTimeout) {
+          clearTimeout(refreshTimeout);
+          refreshTimeout = null;
+        }
+
+        // Clear persisted store
+        usePersistedAuthStore.setState({
+          user: null,
+          isAuthenticated: false,
+          accessToken: null,
+          refreshToken: null,
+        });
+
+        set({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          isSigningIn: false,
+          isSigningUp: false,
+          isSigningInWithGoogle: false,
+          isCreatingAnonymous: false,
+          error: null,
+        });
+      },
+    }),
+    {
+      name: "auth-store",
+    }
+  )
 );
 
-// Initialize token refresh on app start if tokens exist
-if (typeof window !== 'undefined' && TokenManager.hasTokens()) {
-  // Schedule initial token refresh
-  setTimeout(() => {
-    useAuthStore.getState().refreshToken().catch(console.error);
-  }, 1000);
+// Replace the bottom initialization in auth-store.ts with this:
+
+// Auth initialization - only run if we have tokens AND no user in persisted store
+if (typeof window !== "undefined") {
+  const persistedState = usePersistedAuthStore.getState();
   
-  // Try to get current user
-  useAuthStore.getState().getCurrentUser().catch(console.error);
+  // Only auto-initialize if we have tokens but NO persisted user
+  // This prevents clearing an already valid persisted session
+  if (TokenManager.hasTokens() && !persistedState?.user) {
+    console.log('Auto-initializing auth with tokens...');
+    
+    (async () => {
+      try {
+        await useAuthStore.getState().getCurrentUser();
+      } catch (err) {
+        console.warn('getCurrentUser failed on auto-init, attempting refresh:', err);
+        try {
+          await useAuthStore.getState().refreshToken();
+          await useAuthStore.getState().getCurrentUser();
+        } catch (err2) {
+          console.error('Auth auto-init failed completely:', err2);
+          // Only clear if we're sure the session is invalid
+          TokenManager.clearTokens();
+          // Don't call resetAuthState here - let the app handle it
+        }
+      }
+    })();
+  } else if (persistedState?.user && persistedState?.isAuthenticated) {
+    console.log('Using existing persisted auth state');
+    // Restore from persisted store on page load
+    useAuthStore.setState({
+      user: persistedState.user,
+      isAuthenticated: persistedState.isAuthenticated,
+    });
+  }
 }

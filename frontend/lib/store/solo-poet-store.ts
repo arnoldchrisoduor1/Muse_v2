@@ -4,7 +4,6 @@ import axios, { AxiosResponse } from "axios";
 import { usePersistedAuthStore } from "./persisted-auth-store";
 
 // --- ENUMS MIRRORING PRISMA SCHEMA ---
-// These must match the backend's LicenseType and PoemMood exactly.
 export enum LicenseType {
     ALL_RIGHTS_RESERVED = 'ALL_RIGHTS_RESERVED',
     CC_BY = 'CC_BY',
@@ -24,10 +23,16 @@ export enum PoemMood {
     DEFIANT = 'DEFIANT',
 }
 
+export enum PoemStatus {
+    DRAFT = 'DRAFT',
+    PUBLISHED = 'PUBLISHED',
+    ARCHIVED = 'ARCHIVED',
+}
+
 // --- INTERFACES ---
 
 interface AISuggestion {
-    id: string; // Assuming AI suggestions get an ID on the frontend
+    id: string;
     type: 'word_choice' | 'rhythm' | 'imagery' | 'structure' | 'metaphor';
     original: string;
     suggestion: string;
@@ -35,27 +40,52 @@ interface AISuggestion {
     applied: boolean;
 }
 
-interface PoemDraft {
-    // Core DTO fields
-    id?: string; // Optional ID for existing drafts (important for delete/update)
+interface Poem {
+    id: string;
     title: string;
     content: string;
     tags?: string[];
-    mood?: PoemMood | null; // Correctly using PoemMood enum
-    licenseType: LicenseType; // Correctly using LicenseType enum
-    isAnonymous?: boolean; // Added from DTO
-    publishNow?: boolean; // Added from DTO
+    mood?: PoemMood | null;
+    licenseType: LicenseType;
+    isAnonymous: boolean;
+    status: PoemStatus;
+    qualityScore?: number | null;
+    themes?: string[];
+    aiSuggestions?: AISuggestion[];
+    createdAt: Date;
+    updatedAt: Date;
+    publishedAt?: Date;
+    views?: number;
+    likes?: number;
+    earnings?: number;
+    nftTokenId?: string;
+    authorId: string;
+}
 
-    // Frontend/AI specific fields (must be excluded from DTO payload)
+interface PoemDraft {
+    // Core DTO fields
+    id?: string;
+    title: string;
+    content: string;
+    tags?: string[];
+    mood?: PoemMood | null;
+    licenseType: LicenseType;
+    isAnonymous?: boolean;
+    publishNow?: boolean;
+
+    // Frontend/AI specific fields
     themes?: string[];
     qualityScore?: number | null;
     aiSuggestions?: AISuggestion[];
+    status?: PoemStatus; // Add status to distinguish drafts
 }
 
 interface SoloPoetState {
-    // Draft Management
+    // Poem Management
     currentDraft: PoemDraft | null;
     drafts: PoemDraft[];
+    publishedPoems: Poem[];
+    allPoems: Poem[]; // Combined poems for profile display
 
     // AI Features
     isGeneratingFeedback: boolean;
@@ -66,14 +96,18 @@ interface SoloPoetState {
     isPublishing: boolean;
     publishedPoem: any | null;
 
+    // Loading states
+    isLoadingPoems: boolean;
+
     // Actions
     createNewDraft: () => void;
     updateDraft: (updates: Partial<PoemDraft>) => void;
     saveDraft: () => Promise<void>;
     generateAIFeedback: () => Promise<void>;
     publishPoem: (draft: PoemDraft) => Promise<void>;
-    loadDrafts: () => Promise<void>;
+    loadPoems: (userId?: string) => Promise<void>; // Updated function
     deleteDraft: (id: string) => void;
+    setPoems: (poems: Poem[]) => void;
 }
 
 // --- API SETUP ---
@@ -89,6 +123,15 @@ const poemsApiClient = axios.create({
     }
 });
 
+// const userApiClient = axios.create({
+//     baseURL: `${POEMS_API_URL}/api/v1/users`, 
+//     withCredentials: true,
+//     timeout: 10000,
+//     headers: {
+//         'Content-Type': 'application/json',
+//     }
+// });
+
 const getAccessToken = () => {
     const { accessToken } = usePersistedAuthStore.getState();
     return accessToken;
@@ -97,29 +140,46 @@ const getAccessToken = () => {
 const setAuthHeader = (token: string | null) => {
     if (token) {
         poemsApiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        // userApiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } else {
         delete poemsApiClient.defaults.headers.common['Authorization'];
+        // delete userApiClient.defaults.headers.common['Authorization'];
     }
 };
 
-// --- MOCK DATA (Updated to include ID and use Enums) ---
+// Helper function to map API response to Poem interface
+const mapApiPoemToPoem = (apiPoem: any): Poem => ({
+    id: apiPoem.id,
+    title: apiPoem.title,
+    content: apiPoem.content,
+    tags: apiPoem.tags || [],
+    mood: apiPoem.mood as PoemMood || null,
+    licenseType: apiPoem.licenseType as LicenseType,
+    isAnonymous: apiPoem.isAnonymous || false,
+    status: apiPoem.status as PoemStatus,
+    qualityScore: apiPoem.qualityScore || null,
+    themes: apiPoem.themes || [],
+    aiSuggestions: apiPoem.aiSuggestions || [],
+    createdAt: new Date(apiPoem.createdAt),
+    updatedAt: new Date(apiPoem.updatedAt),
+    publishedAt: apiPoem.publishedAt ? new Date(apiPoem.publishedAt) : undefined,
+    views: apiPoem.views || 0,
+    likes: apiPoem.likes || 0,
+    earnings: apiPoem.earnings || 0,
+    nftTokenId: apiPoem.nftTokenId,
+    authorId: apiPoem.authorId,
+});
 
-const mockDrafts: PoemDraft[] = [
-    {
-        id: 'draft-1234',
-        title: 'Urban Echoes',
-        content: 'The city breathes in neon sighs,\nConcrete canyons touch the skies,\nA million stories walk these streets,\nIn rhythm with a thousand beats.',
-        tags: ['urban', 'modern', 'city'],
-        themes: ['technology', 'society'],
-        mood: PoemMood.CONTEMPLATIVE, // Using the new enum
-        licenseType: LicenseType.ALL_RIGHTS_RESERVED, // Using the new enum
-        qualityScore: 72,
-        aiSuggestions: [],
-        isAnonymous: false,
-        publishNow: false,
-    }
-];
-
+// Helper function to map PoemDraft to API payload
+const mapDraftToApiPayload = (draft: PoemDraft) => ({
+    title: draft.title,
+    content: draft.content,
+    tags: draft.tags,
+    mood: draft.mood || undefined,
+    licenseType: draft.licenseType,
+    isAnonymous: draft.isAnonymous || false,
+    publishNow: draft.publishNow || false,
+});
 
 // --- ZUSTAND STORE IMPLEMENTATION ---
 
@@ -127,12 +187,15 @@ export const useSoloPoetStore = create<SoloPoetState>()(
     devtools((set, get) => ({
         // Initial State
         currentDraft: null,
-        drafts: mockDrafts, // Initialize with mock data for testing
+        drafts: [],
+        publishedPoems: [],
+        allPoems: [],
         isGeneratingFeedback: false,
         aiSuggestions: [],
         qualityScore: null,
         isPublishing: false,
         publishedPoem: null,
+        isLoadingPoems: false,
 
         // Create new draft
         createNewDraft: () => {
@@ -142,12 +205,12 @@ export const useSoloPoetStore = create<SoloPoetState>()(
                 tags: [],
                 themes: [],
                 mood: null,
-                // Using the correct enum default value
-                licenseType: LicenseType.ALL_RIGHTS_RESERVED, 
+                licenseType: LicenseType.ALL_RIGHTS_RESERVED,
                 qualityScore: null,
                 aiSuggestions: [],
                 isAnonymous: false,
                 publishNow: false,
+                status: PoemStatus.DRAFT,
             };
             set({ currentDraft: newDraft });
         },
@@ -165,7 +228,7 @@ export const useSoloPoetStore = create<SoloPoetState>()(
             }
         },
 
-        // Save draft (Constructs DTO payload correctly)
+        // Save draft
         saveDraft: async () => {
             const { currentDraft } = get();
             
@@ -177,47 +240,35 @@ export const useSoloPoetStore = create<SoloPoetState>()(
             setAuthHeader(getAccessToken());
 
             try {
-                // 💡 FIX: Construct the payload explicitly to match CreatePoemDto
-                const createPoemPayload = {
-                    title: currentDraft.title,
-                    content: currentDraft.content,
-                    tags: currentDraft.tags,
-                    mood: currentDraft.mood || undefined, // Send as undefined if null
-                    licenseType: currentDraft.licenseType,
-                    // Provide defaults for optional boolean fields if they are missing
-                    isAnonymous: currentDraft.isAnonymous || false, 
-                    publishNow: currentDraft.publishNow || false, 
-                };
+                const createPoemPayload = mapDraftToApiPayload(currentDraft);
                 
-                console.log("Draft payload being sent (DTO): ", createPoemPayload);
+                console.log("Draft payload being sent: ", createPoemPayload);
                 
-                // Determine if this is a new draft (POST) or an update (PUT)
-                // Assuming ID means it exists and should be updated.
                 const isExistingDraft = !!currentDraft.id;
 
                 let response: AxiosResponse<any>;
 
                 if (isExistingDraft) {
-                    // Update existing draft
                     response = await poemsApiClient.put(`/${currentDraft.id}`, createPoemPayload);
                 } else {
-                    // Create new draft
                     response = await poemsApiClient.post('', createPoemPayload);
                 }
 
                 console.log("Draft saved successfully: ", response);
 
-                // Update the currentDraft with the ID returned by the backend for new creations
                 if (!isExistingDraft && response.data.id) {
-                     set({ currentDraft: { ...currentDraft, id: response.data.id } });
+                    set({ currentDraft: { ...currentDraft, id: response.data.id } });
                 }
+
+                // Reload poems to get updated list
+                await get().loadPoems();
 
             } catch (error) {
                 console.error("Failed to save draft:", error);
             }
         },
 
-        // Generate AI Feedback 
+        // Generate AI Feedback
         generateAIFeedback: async () => {
             const { currentDraft } = get();
 
@@ -233,7 +284,6 @@ export const useSoloPoetStore = create<SoloPoetState>()(
             setAuthHeader(getAccessToken());
 
             try {
-                // Prepare the DTO payload (AI endpoint usually only needs content)
                 const payload = {
                     title: currentDraft.title || 'Untitled Draft',
                     content: currentDraft.content,
@@ -247,11 +297,9 @@ export const useSoloPoetStore = create<SoloPoetState>()(
                 const apiData = response.data;
                 console.log("Response from AI feedback: ", apiData);
                 
-                // Map the backend suggestions array (apiData.suggestions)
                 const newSuggestions: AISuggestion[] = apiData.suggestions
                     .filter((s: any) => s && s.suggestion) 
                     .map((s: any) => ({
-                        // Assuming the backend provides an ID or we generate one
                         id: s.id || Math.random().toString(36).substring(2, 9),
                         type: s.type || 'word_choice', 
                         original: s.original || '',
@@ -268,7 +316,6 @@ export const useSoloPoetStore = create<SoloPoetState>()(
                     isGeneratingFeedback: false,
                 });
 
-                // Update current draft with score and suggestions
                 set({
                     currentDraft: {
                         ...currentDraft,
@@ -282,29 +329,24 @@ export const useSoloPoetStore = create<SoloPoetState>()(
             }
         },
 
-        // Publish Poem (Mocked to use PoemDraft)
+        // Publish Poem
         publishPoem: async (draft: PoemDraft) => {
             set({ isPublishing: true });
-
             setAuthHeader(getAccessToken());
 
             try {
-                // 💡 NOTE: In a real app, this API call would use the DTO structure
-                // const response = await poemsApiClient.post('/publish', createPoemPayload); 
-                await new Promise(resolve => setTimeout(resolve, 3000));
-
-                const publishedPoem = {
-                    ...draft,
-                    nftTokenId: `nft_${Math.random().toString(36).substr(2, 9)}`,
-                    views: 0,
-                    likes: 0,
-                    comments: 0,
+                const publishPayload = {
+                    ...mapDraftToApiPayload(draft),
+                    publishNow: true,
                 };
 
-                // Remove from drafts locally and ensure updatedDrafts is defined
+                const response = await poemsApiClient.post('/publish', publishPayload);
+                
+                const publishedPoem = response.data;
+
+                // Remove from drafts and add to published poems
                 const { drafts } = get();
                 const updatedDrafts = drafts.filter(d => d.id !== draft.id);
-
 
                 set({
                     publishedPoem,
@@ -312,40 +354,123 @@ export const useSoloPoetStore = create<SoloPoetState>()(
                     currentDraft: null,
                     isPublishing: false,
                 });
+
+                // Reload poems to get updated list
+                await get().loadPoems();
+
             } catch (error) {
                 console.error("Failed to publish poem:", error);
                 set({ isPublishing: false });
             }
         },
 
-        // Load drafts (Uses mock data)
-        loadDrafts: async () => {
+        // Load Poems from API - Updated function
+        loadPoems: async (userId?: string) => {
+            set({ isLoadingPoems: true });
             setAuthHeader(getAccessToken());
 
             try {
-                // You would replace this mock with:
-                // const response = await poemsApiClient.get('/drafts');
-                // const apiResponse: PoemDraft[] = response.data.drafts; 
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                const mockResponse: PoemDraft[] = mockDrafts;
+                let response: AxiosResponse<any>;
+                
+                    // Fetch poems for a specific user (for profile pages)
+                response = await poemsApiClient.get(`/user/${userId}`);
+                console.log("Load poems response: ", response);
+                
 
-                set({ drafts: mockResponse });
+                const apiPoems: any[] = response.data.poems || response.data;
+                
+                // Map API response to Poem objects
+                const poems: Poem[] = apiPoems.map(mapApiPoemToPoem);
+
+                // Separate drafts and published poems
+                const drafts = poems
+                    .filter(poem => poem.status === PoemStatus.DRAFT)
+                    .map(poem => ({
+                        id: poem.id,
+                        title: poem.title,
+                        content: poem.content,
+                        tags: poem.tags,
+                        mood: poem.mood,
+                        licenseType: poem.licenseType,
+                        isAnonymous: poem.isAnonymous,
+                        themes: poem.themes,
+                        qualityScore: poem.qualityScore,
+                        aiSuggestions: poem.aiSuggestions,
+                        publishNow: false,
+                    }));
+
+                const publishedPoems = poems.filter(poem => poem.status === PoemStatus.PUBLISHED);
+
+                set({
+                    allPoems: poems,
+                    drafts,
+                    publishedPoems,
+                    isLoadingPoems: false,
+                });
+
+                console.log(`Loaded ${poems.length} poems (${drafts.length} drafts, ${publishedPoems.length} published)`);
+
             } catch (error) {
-                console.error("Failed to load drafts:", error);
+                console.error("Failed to load poems:", error);
+                set({ 
+                    isLoadingPoems: false,
+                    allPoems: [],
+                    drafts: [],
+                    publishedPoems: [],
+                });
             }
         },
 
-        // Delete draft 
-        deleteDraft: (id: string) => {
-            // In a real app, you'd add an API call here:
-            // poemsApiClient.delete(`/drafts/${id}`); 
+        // Delete draft
+        deleteDraft: async (id: string) => {
+            setAuthHeader(getAccessToken());
 
-            const { drafts, currentDraft } = get();
-            const updatedDrafts = drafts.filter(d => d.id !== id);
+            try {
+                // API call to delete draft
+                await poemsApiClient.delete(`/${id}`);
+
+                // Update local state
+                const { drafts, currentDraft } = get();
+                const updatedDrafts = drafts.filter(d => d.id !== id);
+
+                set({
+                    drafts: updatedDrafts,
+                    currentDraft: currentDraft?.id === id ? null : currentDraft,
+                });
+
+                // Reload poems to ensure consistency
+                await get().loadPoems();
+
+            } catch (error) {
+                console.error("Failed to delete draft:", error);
+                throw error;
+            }
+        },
+
+        // Set poems directly (for external updates)
+        setPoems: (poems: Poem[]) => {
+            const drafts = poems
+                .filter(poem => poem.status === PoemStatus.DRAFT)
+                .map(poem => ({
+                    id: poem.id,
+                    title: poem.title,
+                    content: poem.content,
+                    tags: poem.tags,
+                    mood: poem.mood,
+                    licenseType: poem.licenseType,
+                    isAnonymous: poem.isAnonymous,
+                    themes: poem.themes,
+                    qualityScore: poem.qualityScore,
+                    aiSuggestions: poem.aiSuggestions,
+                    publishNow: false,
+                }));
+
+            const publishedPoems = poems.filter(poem => poem.status === PoemStatus.PUBLISHED);
 
             set({
-                drafts: updatedDrafts,
-                currentDraft: currentDraft?.id === id ? null : currentDraft,
+                allPoems: poems,
+                drafts,
+                publishedPoems,
             });
         },
     }), {
