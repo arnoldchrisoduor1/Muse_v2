@@ -132,7 +132,7 @@ interface UserState {
 const USER_API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
 
 const api = axios.create({
-    baseURL: `${USER_API_URL}/api/v1/users`, 
+    baseURL: `${USER_API_URL}/api/v1`, 
     withCredentials: true,
     timeout: 10000,
     headers: {
@@ -155,27 +155,20 @@ export const useUserStore = create<UserState>()(
     isLoading: false,
 
     // Load user profile (tries by id first, then by username)
-    loadUserProfile: async (userIdOrUsername: string) => {
+    loadUserProfile: async (username: string) => {
       set({ isLoading: true });
       try {
         // try by id
         let res = null;
         try {
-          res = await api.get(`/users/${encodeURIComponent(userIdOrUsername)}`);
+          res = await api.get(`/users/username/${encodeURIComponent(username)}`);
+          console.log("LoadingUser profile: ", res);
         } catch (err: any) {
-          // if 404 try username route
-          if (err?.response?.status === 404) {
-            res = await api.get(`/users/username/${encodeURIComponent(userIdOrUsername)}`);
-          } else {
-            throw err;
-          }
+         console.error("Could not get user by username", err);
         }
 
-        const profile: UserProfile = res.data;
-        // Optionally convert date strings to Date objects:
-        // profile.joinedAt = new Date(profile.joinedAt as string);
-
-        // If this is the "current" user (your app might use a different check)
+        const profile: UserProfile = res?.data;
+        
         const current = get().currentUser;
         set({
           currentUser: current?.id === profile.id ? profile : current,

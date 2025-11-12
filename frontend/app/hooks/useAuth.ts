@@ -79,8 +79,10 @@ export const useAuth = () => {
 
   // Subscribe to auth store changes to detect unexpected clears
   useEffect(() => {
-    if (!isInitialized) return;
+  if (!isInitialized) return;
 
+  // Small delay before checking auth consistency (wait for page load/hydration)
+  const timeout = setTimeout(() => {
     const unsubscribe = useAuthStore.subscribe((state, prevState) => {
       // Detect if user was cleared but isAuthenticated is still true (INCONSISTENT STATE)
       if (
@@ -126,8 +128,14 @@ export const useAuth = () => {
       }
     });
 
+    // Cleanup when unmounted or re-run
     return () => unsubscribe();
-  }, [isInitialized]);
+  }, 5000); // wait ~0.8s before subscribing
+
+  // Cleanup timeout if component unmounts early
+  return () => clearTimeout(timeout);
+}, [isInitialized]);
+
 
   return {
     ...authStore,

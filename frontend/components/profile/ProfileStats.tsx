@@ -24,19 +24,19 @@ export function ProfileStats({ profile }: ProfileStatsProps) {
     {
       icon: DollarSign,
       label: 'Total Earnings',
-      value: `$${profile.totalEarnings.toFixed(2)}`,
+      value: profile.totalEarnings,
       color: 'text-accent',
     },
     {
       icon: Eye,
       label: 'Poems Read',
-      value: profile.poemsRead.toLocaleString(),
+      value: profile?.poemsRead?.toLocaleString(),
       color: 'text-warning',
     },
     {
       icon: Heart,
       label: 'Poems Liked',
-      value: profile.poemsLiked.toLocaleString(),
+      value: profile?.poemsLiked?.toLocaleString(),
       color: 'text-pink-500',
     },
     {

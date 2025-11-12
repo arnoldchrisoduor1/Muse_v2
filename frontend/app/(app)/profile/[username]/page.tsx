@@ -42,42 +42,39 @@ export default function ProfilePage() {
   publishedPoems, 
   loadPoems, 
   deleteDraft,
-  isLoadingPoems 
+  isLoadingPoems,
+  allPoems,
 } = useSoloPoetStore();
 
 const { user } = useAuth();
 
 
-  const isOwnProfile = viewedProfile?.username === 'current_user';
+  const isOwnProfile = Boolean(user && viewedProfile?.id === user?.id);
+
   console.log("Current Profile user: ", user);
-  console.log("viewed profile: ", viewedProfile);
 
   useEffect(() => {
   if (username) {
-    // If it's the user's own profile, load their poems
+    console.log("Profile Page: Loading profile for username:", username);
+    
+    // Load the profile first
+    loadUserProfile(username);
+    loadUserPoems(username);
+    loadUserCollections(username);
+    
+    // If own profile, load earnings
+    if (isOwnProfile) {
+      loadEarningsData(username);
+    }
+    
+    // Load poems based on user
     if (user) {
-      loadPoems(user.id); // Load current user's poems
-    } else {
-      // For other users' profiles, you'll need their user ID
-      // This depends on your user lookup logic
-      const viewedUserId = viewedProfile?.id;
-      if (viewedUserId) {
-        loadPoems(viewedUserId);
-      }
+      loadPoems(user.id);
     }
   }
-}, [username, isOwnProfile, viewedProfile?.id, loadPoems]);
+}, [username, loadUserProfile, loadUserPoems, loadUserCollections, loadEarningsData, loadPoems, isOwnProfile, user]);
 
-  useEffect(() => {
-    if (username) {
-      loadUserProfile(username);
-      loadUserPoems(username);
-      loadUserCollections(username);
-      if (isOwnProfile) {
-        loadEarningsData(username);
-      }
-    }
-  }, [username, loadUserProfile, loadUserPoems, loadUserCollections, loadEarningsData, isOwnProfile]);
+  console.log("viewedProfile: ", viewedProfile);
 
   if (isLoading && !viewedProfile) {
     return (
@@ -105,11 +102,12 @@ const { user } = useAuth();
   return (
     <div className="min-h-screen bg-bg-primary">
       {/* Profile Header */}
-      <ProfileHeader 
-        profile={viewedProfile} 
+      <ProfileHeader
+        target={viewedProfile}
+        profile={user} 
         isOwnProfile={isOwnProfile}
-        onUnfollow={unfollowUser}
         onFollow={followUser}
+        onUnfollow={unfollowUser}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
@@ -128,10 +126,10 @@ const { user } = useAuth();
                 </div>
 
                 {/* Join Date */}
-                <div className="flex items-center gap-2 text-sm text-text-muted">
+                {/* <div className="flex items-center gap-2 text-sm text-text-muted">
                   <Calendar size={16} />
                   <span>Joined {viewedProfile.joinedAt.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
-                </div>
+                </div> */}
 
                 {/* Social Links */}
                 {(viewedProfile.website || viewedProfile.twitter || viewedProfile.instagram) && (
@@ -222,7 +220,7 @@ const { user } = useAuth();
             <div className="min-h-[400px]">
               {activeTab === 'poems' && (
                 <PoemsTab 
-                  poems={userPoems} 
+                  poems={allPoems} 
                   drafts={isOwnProfile ? drafts : []} 
                   onDeleteDraft={deleteDraft}
                   isOwnProfile={isOwnProfile}
@@ -264,6 +262,8 @@ function PoemsTab({
   }
 
   const allPoems = [...poems, ...drafts.map(draft => ({ ...draft, isDraft: true }))];
+
+  console.log("All poems: ", poems);
 
   if (allPoems.length === 0) {
     return (

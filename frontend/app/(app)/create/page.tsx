@@ -92,7 +92,7 @@ export default function CreatePage() {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">Recent Drafts</h2>
           <span className="text-text-muted text-sm">
-            {drafts.length} {drafts.length === 1 ? 'draft' : 'drafts'}
+            {drafts?.length} {drafts?.length === 1 ? 'draft' : 'drafts'}
           </span>
         </div>
 
@@ -111,7 +111,7 @@ export default function CreatePage() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {drafts.map((draft, index) => (
+            {drafts?.map((draft, index) => (
               <motion.div
                 key={draft.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -122,7 +122,7 @@ export default function CreatePage() {
                   <Card className="p-4 hover:bg-white/10 transition-all duration-300 cursor-pointer h-full">
                     <h3 className="font-semibold mb-2 truncate">{draft.title || 'Untitled'}</h3>
                     <p className="text-text-secondary text-sm mb-3 line-clamp-3">
-                      {draft.content || 'No content yet...'}
+                      {draft?.content || 'No content yet...'}
                     </p>
                     <div className="flex items-center justify-between text-xs text-text-muted">
                       {/* <span>

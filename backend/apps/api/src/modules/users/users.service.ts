@@ -3,6 +3,7 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -13,6 +14,7 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
   constructor(private prisma: PrismaService) {}
 
   /**
@@ -42,6 +44,7 @@ export class UsersService {
     const passwordHash = await bcrypt.hash(createUserDto.password, saltRounds);
 
     // Create user
+    this.logger.log("Creating User account");
     const user = await this.prisma.user.create({
       data: {
         username: createUserDto.username,
@@ -50,6 +53,7 @@ export class UsersService {
         bio: createUserDto.bio || '',
       },
     });
+    this.logger.log("Account created successfully");
 
     return new UserResponseDto(user);
   }
@@ -103,6 +107,7 @@ export class UsersService {
    * Find user by username
    */
   async findByUsername(username: string): Promise<UserResponseDto> {
+    this.logger.log("Getting user by username");
     const user = await this.prisma.user.findUnique({
       where: { username },
       select: this.getUserSelectFields(),
@@ -111,7 +116,7 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException(`User with username ${username} not found`);
     }
-
+    this.logger.log("User by username found: ", user);
     return new UserResponseDto(user);
   }
 
@@ -119,6 +124,7 @@ export class UsersService {
    * Find user by email (for auth)
    */
   async findByEmail(email: string) {
+    this.logger.log("Finding user by email");
     return this.prisma.user.findUnique({
       where: { email },
     });

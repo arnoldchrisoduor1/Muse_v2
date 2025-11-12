@@ -365,63 +365,102 @@ export const useSoloPoetStore = create<SoloPoetState>()(
         },
 
         // Load Poems from API - Updated function
-        loadPoems: async (userId: string) => {
-            console.log("The userid: ", userId);
-            set({ isLoadingPoems: true });
-            setAuthHeader(getAccessToken());
+       // Load poems (userId optional)
+loadPoems: async (userId?: string) => {
+    console.log("loadPoems called with userId:", userId);
 
-            try {
-                console.log("The userid: ", userId);
-                let response: AxiosResponse<any>;
-                
-                    // Fetch poems for a specific user (for profile pages)
-                response = await poemsApiClient.get(`/user/${userId}`);
-                console.log("Load poems response: ", response.data);
-                
+    set({ isLoadingPoems: true });
+    setAuthHeader(getAccessToken());
 
-                const apiPoems: any[] = response.data.poems || response.data;
-                
-                // Map API response to Poem objects
-                const poems: Poem[] = apiPoems.map(mapApiPoemToPoem);
+    try {
+        // If no userId passed, try current user id from state
+        const effectiveUserId = userId;
 
-                // Separate drafts and published poems
-                const drafts = poems
-                    .filter(poem => poem.status === PoemStatus.DRAFT)
-                    .map(poem => ({
-                        id: poem.id,
-                        title: poem.title,
-                        content: poem.content,
-                        tags: poem.tags,
-                        mood: poem.mood,
-                        licenseType: poem.licenseType,
-                        isAnonymous: poem.isAnonymous,
-                        themes: poem.themes,
-                        qualityScore: poem.qualityScore,
-                        aiSuggestions: poem.aiSuggestions,
-                        publishNow: false,
-                    }));
+        // Choose endpoint intelligently:
+        // - If we have an explicit user id: /user/:id
+        // - If not, call root poems list endpoint (adjust to your API if different)
+        const path = effectiveUserId ? `/user/${encodeURIComponent(effectiveUserId)}` : `/`;
 
-                const publishedPoems = poems.filter(poem => poem.status === PoemStatus.PUBLISHED);
+        const response: AxiosResponse<any> = await poemsApiClient.get(path);
+        console.log("Load poems response: ", response.data);
 
-                set({
-                    allPoems: poems,
-                    drafts,
-                    publishedPoems,
-                    isLoadingPoems: false,
-                });
+        // Normalize the API response to an array of poems
+        let apiPoems: any[] = [];
 
-                console.log(`Loaded ${poems.length} poems (${drafts.length} drafts, ${publishedPoems.length} published)`);
-
-            } catch (error) {
-                console.error("Failed to load poems:", error);
-                set({ 
-                    isLoadingPoems: false,
-                    allPoems: [],
-                    drafts: [],
-                    publishedPoems: [],
-                });
+        if (Array.isArray(response.data)) {
+            apiPoems = response.data;
+        } else if (Array.isArray(response.data.poems)) {
+            apiPoems = response.data.poems;
+        } else if (Array.isArray(response.data.items)) {
+            apiPoems = response.data.items; // pagination shape
+        } else if (Array.isArray(response.data.data)) {
+            apiPoems = response.data.data;
+        } else {
+            // Defensive fallback: if response.data itself looks like a single poem object,
+            // convert to array; otherwise keep empty array
+            if (response.data && typeof response.data === 'object' && !Array.isArray(response.data)) {
+                // If it's an object with keys that look like poem fields, try to detect that:
+                const maybePoem = response.data;
+                const hasPoemKeys = ['id','title','content'].some(k => k in maybePoem);
+                if (hasPoemKeys) {
+                    apiPoems = [maybePoem];
+                } else {
+                    // nothing recognized, leave apiPoems = []
+                    console.warn('loadPoems: unrecognized response shape, returning empty array');
+                }
             }
-        },
+        }
+
+        // Final guard: ensure we have an array
+        if (!Array.isArray(apiPoems)) {
+            console.warn('loadPoems: apiPoems is not an array after normalization. Setting to empty array.', apiPoems);
+            apiPoems = [];
+        }
+
+        // Map API response to Poem objects (mapApiPoemToPoem must handle whatever fields your API provides)
+        const poems: Poem[] = apiPoems.map(mapApiPoemToPoem);
+
+        console.log("Load Poems mapped: ", poems);
+
+        // Separate drafts and published poems
+        const drafts = poems
+            .filter(poem => poem.status === PoemStatus.DRAFT)
+            .map(poem => ({
+                id: poem.id,
+                title: poem.title,
+                content: poem.content,
+                tags: poem.tags,
+                mood: poem.mood,
+                licenseType: poem.licenseType,
+                isAnonymous: poem.isAnonymous,
+                themes: poem.themes,
+                qualityScore: poem.qualityScore,
+                aiSuggestions: poem.aiSuggestions,
+                publishNow: false,
+            }));
+
+        const publishedPoems = poems.filter(poem => poem.status === PoemStatus.PUBLISHED);
+
+        set({
+            allPoems: poems,
+            drafts,
+            publishedPoems,
+            isLoadingPoems: false,
+        });
+
+        console.log(`Loaded ${poems.length} poems (${drafts.length} drafts, ${publishedPoems.length} published)`);
+
+    } catch (error) {
+        console.error("Failed to load poems:", error);
+        set({ 
+            isLoadingPoems: false,
+            allPoems: [],
+            drafts: [],
+            publishedPoems: [],
+        });
+    }
+},
+
 
         // Delete draft
         deleteDraft: async (id: string) => {
