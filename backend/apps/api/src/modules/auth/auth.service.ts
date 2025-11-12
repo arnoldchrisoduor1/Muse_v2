@@ -19,10 +19,10 @@ export class AuthService {
    * Validate user credentials
    */
   private getExpiresIn(key: string, fallback = '15m'): string {
-  const val = this.configService.get<string>(key);
-  if (!val) throw new Error(`${key} not configured`);
-  return val;
-}
+    const val = this.configService.get<string>(key);
+    if (!val) throw new Error(`${key} not configured`);
+    return val;
+  }
 
   async validateUser(email: string, password: string): Promise<any> {
     const user = await this.usersService.findByEmail(email);
@@ -62,12 +62,12 @@ export class AuthService {
     };
 
     const accessToken = this.jwtService.sign(payload, {
-  expiresIn: this.getExpiresIn('jwt.accessTokenExpiresIn') as any,
-});
+      expiresIn: this.getExpiresIn('jwt.accessTokenExpiresIn') as any,
+    });
 
-const refreshToken = this.jwtService.sign(payload, {
-  expiresIn: this.getExpiresIn('jwt.refreshTokenExpiresIn') as any,
-});
+    const refreshToken = this.jwtService.sign(payload, {
+      expiresIn: this.getExpiresIn('jwt.refreshTokenExpiresIn') as any,
+    });
 
     return {
       accessToken,
@@ -90,7 +90,9 @@ const refreshToken = this.jwtService.sign(payload, {
       };
 
       const accessToken = this.jwtService.sign(newPayload, {
-        expiresIn: this.configService.get<string>('jwt.accessTokenExpiresIn') as any,
+        expiresIn: this.configService.get<string>(
+          'jwt.accessTokenExpiresIn',
+        ) as any,
       });
 
       return { accessToken };

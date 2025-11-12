@@ -3,7 +3,7 @@ import { UserVerificationStatus, LicenseType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { Exclude } from 'class-transformer';
 
-export class UserResponseDto {
+export class UserAnonymousResponseDto {
   @ApiProperty()
   id: string;
 
@@ -14,10 +14,10 @@ export class UserResponseDto {
   email: string;
 
   @ApiProperty()
-  anonymous: Boolean;
+  passwordHash: string;
 
-  @Exclude()
-  passwordHash: string | null;
+  @ApiProperty()
+  anonymous: Boolean;
 
   @ApiPropertyOptional()
   walletAddress: string | null;
@@ -76,8 +76,7 @@ export class UserResponseDto {
   @ApiProperty()
   updatedAt: Date;
 
-  constructor(partial: Partial<UserResponseDto>) {
+  constructor(partial: Partial<UserAnonymousResponseDto>) {
     Object.assign(this, partial);
-    this.passwordHash = null;
   }
 }

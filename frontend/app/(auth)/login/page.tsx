@@ -24,7 +24,6 @@ export default function LoginPage() {
   const { 
     signIn, 
     signInWithGoogle, 
-    createAnonymousSession, 
     isSigningIn, 
     isSigningInWithGoogle, 
     isCreatingAnonymous,
@@ -50,9 +49,9 @@ export default function LoginPage() {
     await signInWithGoogle();
   };
 
-  const handleAnonymousSession = async () => {
-    await createAnonymousSession();
-  };
+  // const handleAnonymousSession = async () => {
+  //   await createAnonymousSession();
+  // };
 
   useEffect(() => { 
     if(isAuthenticated) {
@@ -182,16 +181,16 @@ export default function LoginPage() {
                 Continue with Google
               </Button>
 
-              <Button
+              {/* <Button
                 variant="outline"
-                onClick={handleAnonymousSession}
+                // onClick={handleAnonymousSession}
                 loading={isCreatingAnonymous}
                 disabled={isCreatingAnonymous}
                 className="w-full"
                 icon={Shield}
               >
                 Continue Anonymously
-              </Button>
+              </Button> */}
             </div>
 
             <div className="mt-6 pt-4 border-t border-white/10">

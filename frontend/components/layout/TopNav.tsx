@@ -186,7 +186,7 @@ export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
                   <span className="text-text-primary font-medium">
                     {user?.username || user?.email?.split("@")[0]}
                   </span>
-                  {user?.isAnonymous && (
+                  {user?.anonymous && (
                     <span className="px-1.5 py-0.5 bg-accent/20 text-accent text-xs rounded-full border border-accent/30">
                       Anonymous
                     </span>
@@ -231,7 +231,7 @@ export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
               <span className="text-text-primary">
                 {user?.username || user?.email?.split("@")[0]}
               </span>
-              {user?.isAnonymous && (
+              {user?.anonymous && (
                 <span className="px-1.5 py-0.5 bg-accent/20 text-accent text-xs rounded-full border border-accent/30">
                   Anonymous
                 </span>

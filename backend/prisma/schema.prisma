@@ -69,6 +69,7 @@ model User {
   email                 String                  @unique
   passwordHash          String?                 // Nullable for wallet-only auth
   walletAddress         String?                 @unique
+  anonymous             Boolean                 @default(false)
   
   // Profile
   bio                   String                  @default("")

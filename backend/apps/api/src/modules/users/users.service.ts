@@ -11,6 +11,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import * as bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
+import { UserAnonymousResponseDto } from '../auth/dto/anonymous-create.dto';
 
 @Injectable()
 export class UsersService {
@@ -57,6 +58,71 @@ export class UsersService {
 
     return new UserResponseDto(user);
   }
+
+  /**
+   * craetiing anonymouse user.
+   */
+  async createAnonymous(): Promise<UserAnonymousResponseDto> {
+    this.logger.log("Creating Anonymous User");
+  const generateRandomString = (length: number) => {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
+  let username: string;
+  let email: string;
+  const plainPassword = generateRandomString(12);
+  const bio = '';
+
+  // Ensure unique username
+  while (true) {
+    username = `anon_${generateRandomString(8)}`;
+    const existingUsername = await this.prisma.user.findUnique({
+      where: { username },
+    });
+    if (!existingUsername) break;
+  }
+
+  // Ensure unique email
+  while (true) {
+    email = `${generateRandomString(10)}@anon.com`;
+    const existingEmail = await this.prisma.user.findUnique({
+      where: { email },
+    });
+    if (!existingEmail) break;
+  }
+
+  // Hash password (store hashed password only)
+  const saltRounds = 10;
+  const passwordHash = await bcrypt.hash(plainPassword, saltRounds);
+
+  // Create user (store hashed password)
+  this.logger.log('Creating anonymous user account...');
+  const user = await this.prisma.user.create({
+    data: {
+      username,
+      email,
+      passwordHash,
+      bio,
+      anonymous: true,
+    },
+  });
+  this.logger.log('Anonymous account created successfully');
+
+  // Build return DTO: include plainPassword but DO NOT persist it
+  const dtoPayload: Partial<UserAnonymousResponseDto> = {
+    ...user,
+    passwordHash: plainPassword,
+  };
+
+  return new UserAnonymousResponseDto(dtoPayload);
+}
+
+
 
   /**
    * Find all users with pagination

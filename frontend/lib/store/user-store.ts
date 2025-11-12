@@ -13,6 +13,8 @@ interface UserProfile {
   coverImageUrl: string;
   joinedAt: Date | string;
   reputation: number;
+  anonymous: boolean;
+  passwordHash?: string;
 
   // Stats
   totalPoems: number;

@@ -22,6 +22,7 @@ import { UsersService } from '../users/users.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
+import { UserAnonymousResponseDto } from './dto/anonymous-create.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -53,6 +54,20 @@ export class AuthController {
 
     return this.authService.login(loginDto);
   }
+
+    @Public()
+    @Post('create-anonymous')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Create an anonymouse user (register anaonymously)' })
+    @ApiResponse({
+      status: 201,
+      description: 'Anonymouse user successfully created',
+      type: UserAnonymousResponseDto,
+    })
+    @ApiResponse({ status: 409, description: 'Could not create anonymouse account' })
+    async createAnonymous() {
+      return this.usersService.createAnonymous();
+    }
 
   @Public()
   @Post('login')

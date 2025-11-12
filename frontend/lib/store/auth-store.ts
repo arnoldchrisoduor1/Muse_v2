@@ -38,8 +38,9 @@ interface User {
   username: string;
   walletAddress?: string;
   avatarUrl?: string;
-  isAnonymous: boolean;
+  anonymous: boolean;
   createdAt: Date;
+  passwordHash?: string;
 }
 
 interface AuthState {
@@ -66,11 +67,11 @@ interface AuthState {
   signUp: (email: string, password: string, username: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
-  createAnonymousSession: () => Promise<void>;
   signOut: () => Promise<void>;
   refreshTokens: () => Promise<void>;
   initialize: () => Promise<void>;
   clearError: () => void;
+  signUpAnonymously: () => Promise<void>;
 }
 
 // Create axios instance
@@ -377,6 +378,55 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
+      signUpAnonymously: async () => {
+        return executeWithRetry(async () => {
+          console.log("Creating anaonymous account");
+          set({ isCreatingAnonymous: true, error: null });
+
+          try {
+            const response: AxiosResponse<AuthResponse> = await apiClient.post(
+              '/create-anonymous'
+            );
+
+            const { user, accessToken, refreshToken, expiresIn } = response.data;
+            const tokenExpiresAt = calculateExpiresAt(expiresIn);
+
+            const authState = {
+              user,
+              isAuthenticated: true,
+              accessToken,
+              refreshToken,
+              tokenExpiresAt,
+              isCreatingAnonymous: false,
+              error: null,
+            };
+
+            console.log("Anonymouse user: ", user);
+
+            set(authState);
+
+            console.log("Authstate: ", authState);
+
+            // Persist to localStorage
+            localStorage.setItem("auth_state", JSON.stringify(authState));
+
+            // Schedule token refresh
+            scheduleTokenRefresh(tokenExpiresAt);
+
+            // Redirect
+            if (typeof window !== "undefined") {
+              window.location.href = "/explore";
+            }
+            console.log("Authstate: ", authState);
+          } catch (error) {
+            console.log("Could not create anonymouse account", error);
+            const errorMsg = getErrorMessage(error);
+            set({ error: errorMsg, isCreatingAnonymous: false });
+            throw error;
+          }
+        })
+      },
+
       // Sign In
       signIn: async (email: string, password: string) => {
         return executeWithRetry(async () => {
@@ -447,41 +497,6 @@ export const useAuthStore = create<AuthState>()(
           } catch (error) {
             const errorMsg = getErrorMessage(error);
             set({ error: errorMsg, isSigningInWithGoogle: false });
-            throw error;
-          }
-        });
-      },
-
-      // Create Anonymous Session
-      createAnonymousSession: async () => {
-        return executeWithRetry(async () => {
-          set({ isCreatingAnonymous: true, error: null });
-
-          try {
-            const response: AxiosResponse<AuthResponse> = await apiClient.post(
-              "/anonymous",
-              {}
-            );
-
-            const { user, accessToken, refreshToken, expiresIn } = response.data;
-            const tokenExpiresAt = calculateExpiresAt(expiresIn);
-
-            const authState = {
-              user,
-              isAuthenticated: true,
-              accessToken,
-              refreshToken,
-              tokenExpiresAt,
-              isCreatingAnonymous: false,
-              error: null,
-            };
-
-            set(authState);
-            localStorage.setItem("auth_state", JSON.stringify(authState));
-            scheduleTokenRefresh(tokenExpiresAt);
-          } catch (error) {
-            const errorMsg = getErrorMessage(error);
-            set({ error: errorMsg, isCreatingAnonymous: false });
             throw error;
           }
         });

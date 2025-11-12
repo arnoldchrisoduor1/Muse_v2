@@ -23,14 +23,14 @@ export default function SignUpPage() {
   const { 
     signUp, 
     signInWithGoogle, 
-    createAnonymousSession, 
     isSigningUp, 
     isSigningInWithGoogle, 
     isCreatingAnonymous,
     error,
     clearError,
     isAuthenticated,
-    isInitialized
+    isInitialized,
+    signUpAnonymously
   } = useAuth();
 
   // Add useEffect to handle redirect if already authenticated
@@ -84,8 +84,7 @@ export default function SignUpPage() {
 
   const handleAnonymousSession = async () => {
     try {
-      await createAnonymousSession();
-      // Redirect handled by auth store
+      await signUpAnonymously();
     } catch (error) {
       console.error('Anonymous session creation failed:', error);
     }
@@ -182,7 +181,7 @@ export default function SignUpPage() {
                         ? 'border-primary/30 hover:border-primary/50' 
                         : 'border-transparent hover:border-white/20'
                     }`}
-                    // onClick={option.type !== 'form' ? option.onClick : undefined}
+                    onClick={option.type !== 'form' ? option.onClick : undefined}
                   >
                     <div className="flex items-start gap-4">
                       <div className={`p-3 rounded-xl ${option.bgColor} ${option.color} group-hover:scale-110 transition-transform`}>
