@@ -20,9 +20,14 @@ export default function NewPoemPage() {
   }, [createNewDraft, currentDraft]);
 
   const handleSaveDraft = async () => {
-    setLoading(true);
-    await saveDraft();
-    setLoading(false);
+    try {
+      setLoading(true);
+      await saveDraft();
+      setLoading(false);
+    } catch (error) {
+      console.log("Error saving draft: ", error);
+      setLoading(false);
+    }
   };
 
   return (

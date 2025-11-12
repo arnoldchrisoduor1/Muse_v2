@@ -142,12 +142,7 @@ export function PoemEditor() {
         </AnimatePresence>
         
         <QualityScoreCard />
-        
-        <PublishingOptions 
-          onPublish={handlePublish}
-          isPublishing={isPublishing}
-          canPublish={!!currentDraft.content.trim() && currentDraft.content.length >= 50}
-        />
+      
       </div>
     </div>
   );

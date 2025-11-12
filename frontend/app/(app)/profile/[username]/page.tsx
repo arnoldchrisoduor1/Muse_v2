@@ -51,8 +51,6 @@ export default function ProfilePage() {
 
 const { user } = useAuth();
 
-
-
   const isOwnProfile = Boolean(user && viewedProfile?.id === user?.id);
 
   console.log("Current Profile user: ", user);
@@ -79,6 +77,8 @@ const { user } = useAuth();
 }, [username, loadUserProfile, loadUserPoems, loadUserCollections, loadEarningsData, loadPoems, isOwnProfile, user]);
 
   console.log("viewedProfile: ", viewedProfile);
+  console.log("Profile page all poems: ", allPoems);
+  console.log("Profile page all drafts: ", drafts);
 
   if (isLoading) {
     return (
@@ -240,7 +240,7 @@ const { user } = useAuth();
             <div className="min-h-[400px]">
               {activeTab === 'poems' && (
                 <PoemsTab 
-                  poems={allPoems} 
+                  poems={publishedPoems} 
                   drafts={isOwnProfile ? drafts : []} 
                   onDeleteDraft={deleteDraft}
                   isOwnProfile={isOwnProfile}
