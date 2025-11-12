@@ -18,7 +18,7 @@ export default function SignUpPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const router = useRouter(); // Initialize router
+  const router = useRouter();
   
   const { 
     signUp, 

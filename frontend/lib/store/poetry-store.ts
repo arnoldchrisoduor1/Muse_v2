@@ -10,7 +10,8 @@ import {
   AIFeedbackResponse,
 } from "@/types/poetry";
 import axios,  { AxiosResponse } from "axios";
-import { usePersistedAuthStore } from "./persisted-auth-store";
+import { SquareArrowOutUpRight } from "lucide-react";
+import { useAuthStore } from "./auth-store";
 
 const POEMS_API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
 
@@ -26,7 +27,7 @@ const poemsApiClient = axios.create({
 
 // to get the access token from te persistent store.
 const getAccessToken = () => {
-  const { accessToken } = usePersistedAuthStore.getState();
+  const { accessToken } = useAuthStore();
   return accessToken;
 }
 

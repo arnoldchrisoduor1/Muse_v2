@@ -1,40 +1,54 @@
 "use client";
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from '@/app/hooks/useAuth';
+import { useAuthStore } from '@/lib/store/auth-store';
+
+const PUBLIC_PATHS = ['/signup', '/login', '/'];
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isInitialized } = useAuth();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
   const router = useRouter();
   const pathname = usePathname();
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // Only run the check once the auth state has been loaded from storage
-    if (isInitialized) {
-      const isPublicPath = pathname.startsWith('/signup') || pathname.startsWith('/login');
-
-      if (!isAuthenticated && !isPublicPath) {
-        // Not authenticated AND trying to access a protected page
-        console.log('Redirecting to /login because user is not authenticated.');
-        router.replace('/login');
-      } else if (isAuthenticated && isPublicPath) {
-        // Authenticated AND trying to access a public page (login/signup)
-        console.log('Redirecting to /explore because user is already authenticated.');
-        router.replace('/explore');
-      }
+    // Only check routes once initialization is complete
+    if (!isInitialized) {
+      return;
     }
-  }, [isAuthenticated, isInitialized, router, pathname]);
 
-  // Block rendering of children until we know the true auth state
-  if (!isInitialized) {
-    // This is the global loading state (as seen in AuthProvider)
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-white">Checking authentication...</p>
-      </div>
+    const isPublicPath = PUBLIC_PATHS.some(path => 
+      pathname === path
     );
+
+    if (!isAuthenticated && !isPublicPath) {
+      // Not authenticated, trying to access protected route
+      console.log('Redirecting to /login - not authenticated');
+      router.replace('/login');
+      return;
+    }
+
+    if (isAuthenticated && isPublicPath && pathname !== '/') {
+      // Authenticated, trying to access login/signup
+      console.log('Redirecting to /explore - already authenticated');
+      router.replace('/explore');
+      return;
+    }
+
+    // All checks passed - allow render
+    setIsChecking(false);
+  }, [isAuthenticated, isInitialized, pathname, router]);
+
+  // Don't render until initialization is complete
+  if (!isInitialized) {
+    return null;
   }
 
-  // Once initialized, render children. If unauthenticated, the useEffect will handle the redirect.
+  // Don't render until route check is complete
+  if (isChecking) {
+    return null;
+  }
+
   return <>{children}</>;
 }

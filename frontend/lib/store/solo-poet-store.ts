@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import axios, { AxiosResponse } from "axios";
-import { usePersistedAuthStore } from "./persisted-auth-store";
+import { useAuthStore } from "./auth-store";
 
 // --- ENUMS MIRRORING PRISMA SCHEMA ---
 export enum LicenseType {
@@ -133,7 +133,7 @@ const poemsApiClient = axios.create({
 // });
 
 const getAccessToken = () => {
-    const { accessToken } = usePersistedAuthStore.getState();
+    const { accessToken } = useAuthStore();
     return accessToken;
 }
 

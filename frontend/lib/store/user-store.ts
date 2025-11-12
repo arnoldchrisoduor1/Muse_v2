@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
+import { useAuthStore } from './auth-store';
 
 interface UserProfile {
   id: string;
@@ -91,10 +92,6 @@ interface PoemAnalytics {
 }
 
 interface UserState {
-  // Current user
-  currentUser: UserProfile | null;
-  isAuthenticated: boolean;
-
   // Profile being viewed (could be current user or another user)
   viewedProfile: UserProfile | null;
 
@@ -122,14 +119,7 @@ interface UserState {
   unfollowUser: (followerId: string, targetId: string) => Promise<void>;
 }
 
-// Configure axios instance
-// const api = axios.create({
-//   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api',
-//   // You can add default headers here (e.g., Authorization) if needed
-//   // headers: { Authorization: `Bearer ${token}` }
-// });
-
-const USER_API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
+const USER_API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
 const api = axios.create({
     baseURL: `${USER_API_URL}/api/v1`, 
@@ -140,11 +130,18 @@ const api = axios.create({
     }
 });
 
+// Add auth token to requests automatically
+api.interceptors.request.use((config) => {
+  const token = useAuthStore.getState().accessToken;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export const useUserStore = create<UserState>()(
   devtools((set, get) => ({
-    // Initial State
-    currentUser: null,
-    isAuthenticated: true, // keep mocked auth flag, replace with real auth later
+    // Initial State - REMOVED duplicate auth state
     viewedProfile: null,
     userPoems: [],
     userCollections: [],
@@ -154,24 +151,14 @@ export const useUserStore = create<UserState>()(
     isUpdatingProfile: false,
     isLoading: false,
 
-    // Load user profile (tries by id first, then by username)
+    // Load user profile
     loadUserProfile: async (username: string) => {
       set({ isLoading: true });
       try {
-        // try by id
-        let res = null;
-        try {
-          res = await api.get(`/users/username/${encodeURIComponent(username)}`);
-          console.log("LoadingUser profile: ", res);
-        } catch (err: any) {
-         console.error("Could not get user by username", err);
-        }
-
+        const res = await api.get(`/users/username/${encodeURIComponent(username)}`);
         const profile: UserProfile = res?.data;
         
-        const current = get().currentUser;
         set({
-          currentUser: current?.id === profile.id ? profile : current,
           viewedProfile: profile,
           isLoading: false,
         });
@@ -186,7 +173,8 @@ export const useUserStore = create<UserState>()(
       set({ isUpdatingProfile: true });
 
       try {
-        const { currentUser, viewedProfile } = get();
+        // Get current user from auth store
+        const currentUser = useAuthStore.getState().user;
         if (!currentUser) {
           throw new Error('No current user to update');
         }
@@ -194,19 +182,31 @@ export const useUserStore = create<UserState>()(
         const res = await api.patch(`/users/${encodeURIComponent(currentUser.id)}`, updates);
         const updatedUser: UserProfile = res.data;
 
+        const { viewedProfile } = get();
         set({
-          currentUser: updatedUser,
           viewedProfile: viewedProfile?.id === currentUser.id ? updatedUser : viewedProfile,
           isUpdatingProfile: false,
         });
+
+        // Update auth store if we updated the current user
+        if (currentUser.id === updatedUser.id) {
+          useAuthStore.setState({
+            user: {
+              ...currentUser,
+              username: updatedUser.username,
+              email: updatedUser.email,
+              avatarUrl: updatedUser.avatarUrl,
+              walletAddress: updatedUser.walletAddress,
+            }
+          });
+        }
       } catch (err) {
         console.error('updateProfile error', err);
-        // optimistic rollback or show error in UI as needed
         set({ isUpdatingProfile: false });
       }
     },
 
-    // Load user poems - endpoint guessed as /users/:id/poems
+    // Load user poems
     loadUserPoems: async (userId: string) => {
       set({ isLoading: true });
       try {
@@ -218,7 +218,7 @@ export const useUserStore = create<UserState>()(
       }
     },
 
-    // Load user collections - endpoint guessed as /users/:id/collections
+    // Load user collections
     loadUserCollections: async (userId: string) => {
       set({ isLoading: true });
       try {
@@ -230,7 +230,7 @@ export const useUserStore = create<UserState>()(
       }
     },
 
-    // Load earnings data - endpoint guessed as /users/:id/earnings
+    // Load earnings data
     loadEarningsData: async (userId: string) => {
       set({ isLoading: true });
       try {
@@ -242,7 +242,7 @@ export const useUserStore = create<UserState>()(
       }
     },
 
-    // Load poem analytics - endpoint guessed as /poems/:id/analytics
+    // Load poem analytics
     loadPoemAnalytics: async (poemId: string) => {
       try {
         const res = await api.get(`/poems/${encodeURIComponent(poemId)}/analytics`);
@@ -255,7 +255,6 @@ export const useUserStore = create<UserState>()(
         }));
       } catch (err) {
         console.warn('loadPoemAnalytics failed', err);
-        // leave existing analytics untouched
       }
     },
 
@@ -263,7 +262,6 @@ export const useUserStore = create<UserState>()(
     followUser: async (followerId: string, targetId: string) => {
       try {
         await api.post(`/users/${encodeURIComponent(followerId)}/follow/${encodeURIComponent(targetId)}`);
-        // update local viewedProfile followersCount if it matches target
         const { viewedProfile } = get();
         if (viewedProfile && viewedProfile.id === targetId) {
           set({

@@ -1,15 +1,20 @@
 // app/(auth)/login/page.tsx
 "use client";
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, Sparkles, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useAuthStore } from '@/lib/store/auth-store';
 import Link from 'next/link';
 import { useAuth } from '@/app/hooks/useAuth';
+import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
+
+  const { isAuthenticated } = useAuthStore();
+  const router = useRouter();
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -48,6 +53,12 @@ export default function LoginPage() {
   const handleAnonymousSession = async () => {
     await createAnonymousSession();
   };
+
+  useEffect(() => { 
+    if(isAuthenticated) {
+      router.push('/explore');
+    }
+  }, [isAuthenticated, router])
 
   return (
     <div className="min-h-screen bg-gradient-135 from-purple-900 via-indigo-900 to-blue-900 flex items-center justify-center p-4">

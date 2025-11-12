@@ -13,31 +13,26 @@ import {
   LogIn,
 } from "lucide-react";
 import { usePoetryStore } from "@/lib/store/poetry-store";
-import { useAuth } from "@/app/hooks/useAuth";
-import { Button } from "@/components/ui/Button";
+import { useAuthStore } from "@/lib/store/auth-store";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState, useMemo } from "react";
-import { useAuthStore } from "@/lib/store/auth-store";
-import { usePersistedAuthStore } from "@/lib/store/persisted-auth-store";
+import { useMemo } from "react";
 
 interface TopNavProps {
   onToggleSidebar: () => void;
   isSidebarOpen: boolean;
 }
 
-// We'll create the majorPages array inside the component to access the user data
-const publicPages = ["/", "/login", "/signup"];
+const PUBLIC_PATHS = ["/", "/login", "/signup"];
 
 export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
   const { activeTab, setActiveTab } = usePoetryStore();
-  const { user, isAuthenticated, signOut, isLoading, isInitialized } = useAuth();
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const signOut = useAuthStore((state) => state.signOut);
+  const isLoading = useAuthStore((state) => state.isLoading);
   const router = useRouter();
   const pathname = usePathname();
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-
-  console.log("Current user: ", user);
-  console.log("Authentication state:", isAuthenticated);
 
   // Create majorPages array with dynamic profile link
   const majorPages = useMemo(() => [
@@ -69,57 +64,21 @@ export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
       href: "/explore",
       requiresAuth: true,
     },
-    { id: "dao", label: "DAO", icon: Gem, href: "/dao", requiresAuth: true },
+    { 
+      id: "dao", 
+      label: "DAO", 
+      icon: Gem, 
+      href: "/dao", 
+      requiresAuth: true 
+    },
     {
       id: "profile",
       label: "Profile",
       icon: User,
-      href: user?.username ? `/profile/${user.username}` : "/profile", // Dynamic profile link
+      href: user?.username ? `/profile/${user.username}` : "/profile",
       requiresAuth: true,
     },
-  ] as const, [user?.username]); // Recreate when username changes
-
-  useEffect(() => {
-  const unsubscribe = useAuthStore.subscribe((state) => {
-    console.log('Auth store changed:', {
-      user: state.user?.username,
-      isAuthenticated: state.isAuthenticated,
-      isLoading: state.isLoading,
-    });
-  });
-
-  const unsubscribePersisted = usePersistedAuthStore.subscribe((state) => {
-    console.log('Persisted store changed:', {
-      user: state.user?.username,
-      isAuthenticated: state.isAuthenticated,
-    });
-  });
-
-  return () => {
-    unsubscribe();
-    unsubscribePersisted();
-  };
-}, []);
-
-  // Check authentication status and redirect if needed
-  useEffect(() => {
-    const checkAuth = async () => {
-      setIsCheckingAuth(true);
-
-      // If user is not authenticated and trying to access protected page, redirect to login
-      if (!isAuthenticated && !publicPages.includes(pathname)) {
-        console.log("User authentication State: ", isAuthenticated);
-        const currentPage = majorPages.find((page) => page.href === pathname);
-        if (currentPage?.requiresAuth) {
-          router.push("/login");
-        }
-      }
-
-      setIsCheckingAuth(false);
-    };
-
-    checkAuth();
-  }, [isAuthenticated, pathname, router, majorPages]);
+  ] as const, [user?.username]);
 
   type PageId = (typeof majorPages)[number]["id"];
 
@@ -129,7 +88,6 @@ export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
     requiresAuth: boolean
   ) => {
     if (requiresAuth && !isAuthenticated) {
-      console.log("User being moved to login by HandleNavigation");
       router.push("/login");
       return;
     }
@@ -140,39 +98,20 @@ export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
 
   const handleLogout = async () => {
     try {
-      console.log("Loggin out User");
       await signOut();
-      router.push("/");
     } catch (error) {
       console.error("Logout failed:", error);
     }
   };
 
   const handleLogin = () => {
-    console.log("Moving user to login page");
     router.push("/login");
   };
 
-  // Don't render nav on auth pages when not authenticated
-  if ((pathname === "/login" || pathname === "/signup") && !isAuthenticated) {
+  // Don't render nav on public pages when not authenticated
+  const isPublicPath = PUBLIC_PATHS.includes(pathname);
+  if (isPublicPath && !isAuthenticated) {
     return null;
-  }
-
-  // Show loading state while checking auth
-  if (!isInitialized) {
-    return (
-      <nav className="glass-card-nav border-b border-white/20 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-          <div className="flex items-center justify-between h-12">
-            <div className="flex items-center gap-4">
-              <div className="w-7 h-7 bg-gradient-90 from-secondary to-primary rounded-lg animate-pulse" />
-              <div className="h-4 w-32 bg-white/20 rounded animate-pulse hidden sm:block" />
-            </div>
-            <div className="h-8 w-8 bg-white/20 rounded-full animate-pulse" />
-          </div>
-        </div>
-      </nav>
-    );
   }
 
   return (
@@ -181,7 +120,7 @@ export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
         <div className="flex items-center justify-between h-12">
           {/* Logo & Mobile Menu */}
           <div className="flex items-center gap-4">
-            {/* Mobile Menu Button - Only one menu button now */}
+            {/* Mobile Menu Button */}
             <button
               className="lg:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
               onClick={onToggleSidebar}
@@ -189,7 +128,7 @@ export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
               {isSidebarOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
 
-            {/* Logo with Link */}
+            {/* Logo */}
             <Link href="/" className="flex items-center gap-3">
               <motion.div
                 whileHover={{ scale: 1.05 }}
@@ -235,12 +174,11 @@ export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
             })}
           </div>
 
-          {/* Desktop Sidebar Toggle & Auth Section */}
+          {/* Auth Section */}
           <div className="flex items-center gap-3">
-            {/* Auth Section */}
             {isAuthenticated ? (
               <div className="flex items-center gap-3">
-                {/* User Info - Hidden on mobile since we show it below */}
+                {/* User Info - Hidden on mobile */}
                 <div className="hidden sm:flex items-center gap-2 text-sm">
                   <div className="w-6 h-6 bg-gradient-90 from-primary to-secondary rounded-full flex items-center justify-center">
                     <User size={16} className="text-white" />
@@ -255,7 +193,7 @@ export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
                   )}
                 </div>
 
-                {/* Logout Button - Hidden on mobile since we show it below */}
+                {/* Logout Button - Hidden on mobile */}
                 <motion.button
                   onClick={handleLogout}
                   disabled={isLoading}
@@ -269,7 +207,7 @@ export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
                 </motion.button>
               </div>
             ) : (
-              /* Login Button for unauthenticated users - Hidden on mobile */
+              /* Login Button - Hidden on mobile */
               <motion.button
                 onClick={handleLogin}
                 whileHover={{ scale: 1.05 }}
@@ -280,12 +218,10 @@ export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
                 <span className="text-sm font-medium">Sign In</span>
               </motion.button>
             )}
-
-            {/* REMOVED: Duplicate mobile menu button was here */}
           </div>
         </div>
 
-        {/* Mobile Auth Info - Only show on mobile */}
+        {/* Mobile Auth Info */}
         {isAuthenticated && (
           <div className="md:hidden flex items-center justify-between mt-2 pt-2 border-t border-white/10">
             <div className="flex items-center gap-2 text-sm">
