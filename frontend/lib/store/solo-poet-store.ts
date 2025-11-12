@@ -365,16 +365,18 @@ export const useSoloPoetStore = create<SoloPoetState>()(
         },
 
         // Load Poems from API - Updated function
-        loadPoems: async (userId?: string) => {
+        loadPoems: async (userId: string) => {
+            console.log("The userid: ", userId);
             set({ isLoadingPoems: true });
             setAuthHeader(getAccessToken());
 
             try {
+                console.log("The userid: ", userId);
                 let response: AxiosResponse<any>;
                 
                     // Fetch poems for a specific user (for profile pages)
                 response = await poemsApiClient.get(`/user/${userId}`);
-                console.log("Load poems response: ", response);
+                console.log("Load poems response: ", response.data);
                 
 
                 const apiPoems: any[] = response.data.poems || response.data;

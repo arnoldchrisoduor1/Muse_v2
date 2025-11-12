@@ -211,41 +211,48 @@ export class PoemsService {
    * Get poems by user
    */
   async findByUser(userId: string, page: number = 1, limit: number = 20) {
-    const skip = (page - 1) * limit;
+  this.logger.log("🔄 Getting poems for user ID:", userId);
+  
+  // First, verify the user exists
+  const user = await this.prisma.user.findUnique({
+    where: { id: userId }
+  });
+  
+  this.logger.log("👤 User found:", user ? `Yes (${user.username})` : 'No user found');
+  
+  const skip = (page - 1) * limit;
 
-    const [poems, total] = await Promise.all([
-      this.prisma.poem.findMany({
-        where: {
-          authorId: userId,
-          status: PoemStatus.PUBLISHED,
-        },
-        skip,
-        take: limit,
-        orderBy: { publishedAt: 'desc' },
-        include: {
-          author: true,
-        },
-      }),
-      this.prisma.poem.count({
-        where: {
-          authorId: userId,
-          status: PoemStatus.PUBLISHED,
-        },
-      }),
-    ]);
+  const [poems, total] = await Promise.all([
+    this.prisma.poem.findMany({
+      where: {
+        authorId: userId,
+      },
+      skip,
+      take: limit,
+      include: {
+        author: true,
+      },
+    }),
+    this.prisma.poem.count({
+      where: {
+        authorId: userId,
+      },
+    }),
+  ]);
 
-    const totalPages = Math.ceil(total / limit);
+  this.logger.log("📊 Total poems found:", total);
+  this.logger.log("📝 Poem items:", poems.map(p => ({ id: p.id, title: p.title, authorId: p.authorId })));
 
-    return {
-      items: poems.map(poem => new PoemResponseDto(poem)),
-      total,
-      page,
-      limit,
-      totalPages,
-      hasNext: page < totalPages,
-      hasPrevious: page > 1,
-    };
-  }
+  return {
+    items: poems.map(poem => new PoemResponseDto(poem)),
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+    hasNext: page < Math.ceil(total / limit),
+    hasPrevious: page > 1,
+  };
+}
 
   /**
    * Get user's drafts

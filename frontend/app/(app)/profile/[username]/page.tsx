@@ -15,6 +15,7 @@ import { ProfileStats } from '@/components/profile/ProfileStats';
 import { BadgeDisplay } from '@/components/profile/BadgeDisplay';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/app/hooks/useAuth';
 
 export default function ProfilePage() {
   const params = useParams();
@@ -44,14 +45,18 @@ export default function ProfilePage() {
   isLoadingPoems 
 } = useSoloPoetStore();
 
+const { user } = useAuth();
+
 
   const isOwnProfile = viewedProfile?.username === 'current_user';
+  console.log("Current Profile user: ", user);
+  console.log("viewed profile: ", viewedProfile);
 
   useEffect(() => {
   if (username) {
     // If it's the user's own profile, load their poems
-    if (isOwnProfile) {
-      loadPoems(); // Load current user's poems
+    if (user) {
+      loadPoems(user.id); // Load current user's poems
     } else {
       // For other users' profiles, you'll need their user ID
       // This depends on your user lookup logic
@@ -103,8 +108,8 @@ export default function ProfilePage() {
       <ProfileHeader 
         profile={viewedProfile} 
         isOwnProfile={isOwnProfile}
-        onFollow={followUser}
         onUnfollow={unfollowUser}
+        onFollow={followUser}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
