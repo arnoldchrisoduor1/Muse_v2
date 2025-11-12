@@ -126,9 +126,7 @@ export class UsersController {
     type: UserResponseDto,
   })
   @ApiResponse({ status: 404, description: 'User not found' })
-  // TODO: Add JwtAuthGuard when auth is implemented
-  // @UseGuards(JwtAuthGuard)
-  // @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.usersService.update(id, updateUserDto);
   }
@@ -198,6 +196,7 @@ export class UsersController {
     return this.usersService.getFollowing(userId, pagination.page, pagination.limit);
   }
 
+  @Public()
   @Get(':followerId/is-following/:followingId')
   @ApiOperation({ summary: 'Check if user is following another user' })
   @ApiResponse({ status: 200, description: 'Returns boolean' })

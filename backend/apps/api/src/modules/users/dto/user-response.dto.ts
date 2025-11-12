@@ -26,6 +26,18 @@ export class UserResponseDto {
   avatarUrl: string | null;
 
   @ApiProperty()
+  website: string | null;
+
+  @ApiProperty()
+  twitter: string | null;
+
+  @ApiProperty()
+  instagram: string | null;
+
+  @ApiProperty()
+  coverImageUrl: string | null;
+
+  @ApiProperty()
   reputation: number;
 
   @ApiProperty()

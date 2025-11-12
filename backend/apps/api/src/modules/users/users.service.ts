@@ -160,6 +160,7 @@ export class UsersService {
       data: updateUserDto,
       select: this.getUserSelectFields(),
     });
+    this.logger.log("Successfully updated user");
 
     return new UserResponseDto(user);
   }
@@ -190,6 +191,7 @@ export class UsersService {
    * Update last login timestamp
    */
   async updateLastLogin(id: string): Promise<void> {
+    this.logger.log("Updating last login");
     await this.prisma.user.update({
       where: { id },
       data: { lastLoginAt: new Date() },
@@ -274,6 +276,7 @@ export class UsersService {
         data: { followersCount: { increment: 1 } },
       }),
     ]);
+    this.logger.log("Successfully followed a user");
 
     return { message: 'Successfully followed user' };
   }
@@ -315,6 +318,8 @@ export class UsersService {
       }),
     ]);
 
+    this.logger.log("Successfully unfollowed user");
+
     return { message: 'Successfully unfollowed user' };
   }
 
@@ -342,6 +347,8 @@ export class UsersService {
         where: { followingId: userId },
       }),
     ]);
+
+    this.logger.log("Found followers: ", followers, total);
 
     const totalPages = Math.ceil(total / limit);
 
@@ -398,6 +405,7 @@ export class UsersService {
    * Check if user is following another user
    */
   async isFollowing(followerId: string, followingId: string): Promise<boolean> {
+    this.logger.log("Checking follow status");
     const follow = await this.prisma.follow.findUnique({
       where: {
         followerId_followingId: {
@@ -406,6 +414,7 @@ export class UsersService {
         },
       },
     });
+    this.logger.log("Follow status retrieved successfully");
 
     return !!follow;
   }

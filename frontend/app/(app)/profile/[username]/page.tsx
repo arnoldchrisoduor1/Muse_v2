@@ -16,11 +16,14 @@ import { BadgeDisplay } from '@/components/profile/BadgeDisplay';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/app/hooks/useAuth';
+import { ProfileSkeleton } from '@/components/profile/ProfileSkeleton';
+import { UpdateProfileModal } from '@/components/profile/UpdateProfileModal';
 
 export default function ProfilePage() {
   const params = useParams();
   const username = params.username as string;
   const [activeTab, setActiveTab] = useState<'poems' | 'collections' | 'collaborations' | 'analytics'>('poems');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   const {
     viewedProfile,
@@ -47,6 +50,7 @@ export default function ProfilePage() {
 } = useSoloPoetStore();
 
 const { user } = useAuth();
+
 
 
   const isOwnProfile = Boolean(user && viewedProfile?.id === user?.id);
@@ -76,7 +80,13 @@ const { user } = useAuth();
 
   console.log("viewedProfile: ", viewedProfile);
 
-  if (isLoading && !viewedProfile) {
+  if (isLoading) {
+    return (
+      <ProfileSkeleton />
+    );
+  }
+  if(!viewedProfile) {
+
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -86,7 +96,7 @@ const { user } = useAuth();
       </div>
     );
   }
-
+    
   if (!viewedProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -101,10 +111,15 @@ const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-bg-primary">
+      {/* Update Profile Modal */}
+      <UpdateProfileModal 
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+      />
       {/* Profile Header */}
       <ProfileHeader
-        target={viewedProfile}
-        profile={user} 
+        myProfile={user}
+        viewedProfile={viewedProfile}
         isOwnProfile={isOwnProfile}
         onFollow={followUser}
         onUnfollow={unfollowUser}
@@ -206,7 +221,12 @@ const { user } = useAuth();
               
               {isOwnProfile && (
                 <div className="flex gap-3 w-full sm:w-auto">
-                  <Button variant="outline" icon={Edit} className="flex-1 sm:flex-none">
+                  <Button 
+                    variant="outline" 
+                    icon={Edit} 
+                    className="flex-1 sm:flex-none"
+                    onClick={() => setIsEditModalOpen(true)}
+                  >
                     Edit Profile
                   </Button>
                   <Button variant="primary" icon={Plus} className="flex-1 sm:flex-none">

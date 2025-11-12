@@ -72,7 +72,14 @@ model User {
   
   // Profile
   bio                   String                  @default("")
-  avatarUrl             String?
+  avatarUrl             String?                 @default("https://robohash.org/154.159.237.216.png")
+  coverImageUrl         String?                 @default("https://robohash.org/XD3.png?set=set4")
+
+  //socials
+  twitter               String?                 @default("")
+  website               String?                 @default("")
+  instagram             String?                 @default("")
+  
   
   // Stats
   reputation            Int                     @default(0)

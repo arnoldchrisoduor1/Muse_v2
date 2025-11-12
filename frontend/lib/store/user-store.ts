@@ -108,6 +108,8 @@ interface UserState {
   isUpdatingProfile: boolean;
   isLoading: boolean;
 
+  isFollowing: Boolean;
+
   // Actions
   loadUserProfile: (userIdOrUsername: string) => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
@@ -117,6 +119,7 @@ interface UserState {
   loadPoemAnalytics: (poemId: string) => Promise<void>;
   followUser: (followerId: string, targetId: string) => Promise<void>;
   unfollowUser: (followerId: string, targetId: string) => Promise<void>;
+  checkIfIfollowThisUser : (followerId: string, followingId: string) => Promise<void>;
 }
 
 const USER_API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
@@ -150,6 +153,7 @@ export const useUserStore = create<UserState>()(
     poemAnalytics: {},
     isUpdatingProfile: false,
     isLoading: false,
+    isFollowing: false,
 
     // Load user profile
     loadUserProfile: async (username: string) => {
@@ -172,6 +176,8 @@ export const useUserStore = create<UserState>()(
     updateProfile: async (updates: Partial<UserProfile>) => {
       set({ isUpdatingProfile: true });
 
+      console.log("Attempting to update user with: ", updates);
+
       try {
         // Get current user from auth store
         const currentUser = useAuthStore.getState().user;
@@ -181,6 +187,8 @@ export const useUserStore = create<UserState>()(
 
         const res = await api.patch(`/users/${encodeURIComponent(currentUser.id)}`, updates);
         const updatedUser: UserProfile = res.data;
+
+        console.log("Profile Updated sucessfully: ", updatedUser);
 
         const { viewedProfile } = get();
         set({
@@ -293,6 +301,18 @@ export const useUserStore = create<UserState>()(
         console.error('unfollowUser error', err);
       }
     },
+
+    checkIfIfollowThisUser: async(followerId: string, followingId: string) => {
+      try {
+        const res = await api.get(`/users/${encodeURIComponent(followerId)}/is-following/${encodeURIComponent(followingId)}`);
+        console.log("Is following check: ", res);
+        set({
+          isFollowing: true,
+        })
+      } catch (error) {
+        console.log("Could not check follow user status");
+      }
+    }
   }), {
     name: 'user-store',
   })
