@@ -7,10 +7,13 @@ export default () => ({
   },
   redis: {
     url: process.env.REDIS_URL,
+    host: process.env.REDIS_HOST,
+    port: parseInt(process.env.REDIS_PORT || "6379"),
+    password: process.env.REDIS_PASSWORD,
   },
   jwt: {
     secret: process.env.JWT_SECRET,
-    accessTokenExpiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRES_IN || '15m',
+    accessTokenExpiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRES_IN || '30m',
     refreshTokenExpiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRES_IN || '7d',
   },
   huggingface: {
@@ -20,5 +23,12 @@ export default () => ({
   },
   frontend: {
     url: process.env.FRONTEND_URL || 'http://localhost:5173',
+  },
+  blockchain: {
+    rpcUrl: process.env.BLOCKCHAIN_RPC_URL,
+    privateKey: process.env.BLOCKCHAIN_PRIVATE_KEY,
+    network: process.env.BLOCKCHAIN_NETWORK,
+    poemNFTContractAddress: process.env.POEM_NFT_CONTRACT_ADDRESS,
+    fractionalOwnershipContractAddress: process.env.FRACTIONAL_OWNERSHIP_CONTRACT_ADDRESS,
   },
 });

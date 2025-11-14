@@ -1,7 +1,6 @@
-// src/app.module.ts
-
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BullModule } from '@nestjs/bull';
 import { APP_GUARD } from '@nestjs/core';
 
 import { PrismaModule } from './prisma/prisma.module';
@@ -15,6 +14,7 @@ import { BlockchainModule } from './modules/blockchain/blockchain.module';
 
 import { AppController } from './app.controller';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { RedisHealthService } from './config/redis-health.service';
 import configuration from './config/configuration';
 
 @Module({
@@ -22,6 +22,56 @@ import configuration from './config/configuration';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
+    }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => {
+        const redisUrl = configService.get('redis.url');
+        
+        if (!redisUrl) {
+          throw new Error('REDIS_URL is required in environment variables');
+        }
+
+        console.log('🔌 Configuring Redis with URL:', redisUrl.replace(/\/\/:[^@]*@/, '//***@'));
+
+        return {
+          redis: {
+            ...(redisUrl.startsWith('redis://') || redisUrl.startsWith('rediss://') 
+              ? { 
+                  host: new URL(redisUrl).hostname,
+                  port: parseInt(new URL(redisUrl).port),
+                  password: new URL(redisUrl).password,
+                  tls: redisUrl.startsWith('rediss://') ? {} : undefined,
+                }
+              : { 
+                  url: redisUrl 
+                }
+            ),
+            maxRetriesPerRequest: 3,
+            retryDelayOnFailover: 100,
+            enableReadyCheck: false,
+            autoResubscribe: true,
+            lazyConnect: true,
+            connectTimeout: 30000,
+            commandTimeout: 30000,
+            retryStrategy(times: number) {
+              const delay = Math.min(times * 50, 2000);
+              return delay;
+            },
+          },
+          defaultJobOptions: {
+            removeOnComplete: 100,
+            removeOnFail: 50,
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 1000,
+            },
+            timeout: 30000,
+          },
+        };
+      },
+      inject: [ConfigService],
     }),
     PrismaModule,
     UsersModule,
@@ -34,6 +84,7 @@ import configuration from './config/configuration';
   ],
   controllers: [AppController],
   providers: [
+    RedisHealthService, // Add this line
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

@@ -368,7 +368,7 @@ export class PoemsService {
   /**
    * Handle blockchain operations when publishing
    */
-  private async handlePublishWithBlockchain(poemId: string, userId: string) {
+   private async handlePublishWithBlockchain(poemId: string, userId: string) {
     this.logger.log(`⛓️ Starting blockchain operations for poem ${poemId}`);
 
     try {
@@ -383,26 +383,123 @@ export class PoemsService {
         return;
       }
 
+      // Check if Redis is connected before adding to queue
+      const isRedisHealthy = await this.checkRedisHealth();
+      if (!isRedisHealthy) {
+        this.logger.warn('Redis is not available, skipping blockchain queue');
+        // You could implement a fallback here, like direct minting
+        await this.processPoemMintingDirect(poemId, user.walletAddress);
+        return;
+      }
+
       // Add minting job to queue (for async processing)
-      await this.blockchainQueue.add('mint-poem-nft', {
-        poemId,
-        userId,
-        walletAddress: user.walletAddress,
-      }, {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 2000,
+      await this.blockchainQueue.add(
+        'mint-poem-nft',
+        {
+          poemId,
+          userId,
+          walletAddress: user.walletAddress,
         },
-      });
+        {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 1000, // Reduced from 2000
+          },
+          timeout: 30000, // 30 second timeout
+          removeOnComplete: 50,
+          removeOnFail: 25,
+        }
+      );
 
       this.logger.log(`✅ Blockchain minting job queued for poem ${poemId}`);
     } catch (error) {
       this.logger.error(`❌ Failed to queue blockchain job for poem ${poemId}:`, error);
-      // Don't throw - allow poem to be published even if blockchain fails
+      
+      // Fallback: try direct processing
+      try {
+        this.logger.log(`🔄 Attempting direct minting for poem ${poemId}`);
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { walletAddress: true },
+        });
+        
+        if (user?.walletAddress) {
+          await this.processPoemMintingDirect(poemId, user.walletAddress);
+        }
+      } catch (fallbackError) {
+        this.logger.error(`💥 Direct minting also failed for poem ${poemId}:`, fallbackError);
+      }
     }
   }
 
+  /**
+   * Check Redis health
+   */
+  private async checkRedisHealth(): Promise<boolean> {
+    try {
+      // Simple ping to check Redis connection
+      const client = (this.blockchainQueue as any).client;
+      if (client && typeof client.ping === 'function') {
+        await client.ping();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      this.logger.warn('Redis health check failed');
+      return false;
+    }
+  }
+
+  /**
+   * Process minting directly without queue (fallback)
+   */
+  private async processPoemMintingDirect(poemId: string, walletAddress: string) {
+    this.logger.log(`🔨 Processing direct NFT mint for poem ${poemId}`);
+    
+    try {
+      const poem = await this.prisma.poem.findUnique({
+        where: { id: poemId },
+      });
+
+      if (!poem) {
+        throw new Error(`Poem ${poemId} not found`);
+      }
+
+      // Check if already minted
+      const existingBlockchainData = await this.prisma.blockchainData.findUnique({
+        where: { poemId },
+      });
+
+      if (existingBlockchainData?.tokenId) {
+        this.logger.log(`Poem ${poemId} already minted as token ${existingBlockchainData.tokenId}`);
+        return;
+      }
+
+      // Ensure contentHash is not null
+      const contentHash = poem.contentHash || this.generateContentHash(poem.content);
+
+      // Mint the NFT directly
+      const mintResult = await this.blockchainService.mintPoemNFT(
+        poemId,
+        walletAddress,
+        {
+          title: poem.title,
+          content: poem.content,
+          contentHash: contentHash,
+          tags: poem.tags,
+          mood: poem.mood || undefined,
+        }
+      );
+
+      this.logger.log(`✅ Poem ${poemId} minted successfully as token ${mintResult.tokenId}`);
+      
+      return mintResult;
+    } catch (error) {
+      this.logger.error(`❌ Direct minting failed for poem ${poemId}:`, error);
+      throw error;
+    }
+  }
   /**
    * Process blockchain minting (called by queue worker)
    */
