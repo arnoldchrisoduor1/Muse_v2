@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { AiService } from '../ai/ai.service';
+import { BlockchainService } from '../blockchain/blockchain.service';
 import { CreatePoemDto } from './dto/create-poem.dto';
 import { UpdatePoemDto } from './dto/update-poem.dto';
 import { SearchPoemsDto } from './dto/search-poems.dto';
@@ -14,21 +15,27 @@ import { PoemResponseDto } from './dto/poem-response.dto';
 import { Prisma, PoemStatus } from '@prisma/client';
 import { createHash } from 'crypto';
 import { Logger } from '@nestjs/common';
+import type { Queue } from 'bull';
+import { InjectQueue } from '@nestjs/bull';
 
 @Injectable()
 export class PoemsService {
   private readonly logger = new Logger(PoemsService.name);
+  
   constructor(
     private prisma: PrismaService,
     private usersService: UsersService,
     private aiService: AiService,
+    private blockchainService: BlockchainService,
+    @InjectQueue('blockchain') private blockchainQueue: Queue,
   ) {}
 
   /**
    * Create a new poem
    */
   async create(userId: string, createPoemDto: CreatePoemDto): Promise<PoemResponseDto> {
-    this.logger.log("Saving poem")
+    this.logger.log("Saving poem");
+    
     // Generate excerpt (first 150 chars)
     const excerpt = this.generateExcerpt(createPoemDto.content);
 
@@ -64,31 +71,27 @@ export class PoemsService {
 
     this.logger.log("Poem saved successfully");
 
-    // Update user's poem count if published
+    // If publishing immediately, trigger blockchain minting
     if (status === PoemStatus.PUBLISHED) {
-      await this.usersService.incrementPoemCount(userId);
+      await this.handlePublishWithBlockchain(poem.id, userId);
     }
 
     return new PoemResponseDto(poem);
   }
 
   /**
- * Get AI feedback for a poem content without storing it (stateless)
- */
-
+   * Get AI feedback for a poem content without storing it (stateless)
+   */
   async getStatelessAIFeedback(title: string, content: string) {
-
     this.logger.log("Attempting to get ai feedback");
     const feedback = await this.aiService.getPoemFeedback(title, content);
     this.logger.log("Response from AI service feedback received", feedback);
 
-    // we'll calculate the final quality score.
     const qualityScore = this.aiService.calculateQualityScore(
       content,
       feedback,
     );
 
-    // we then return this data.
     return {
       ...feedback,
       qualityScore,
@@ -105,18 +108,13 @@ export class PoemsService {
   async getAIFeedback(poemId: string, userId: string) {
     const poem = await this.findOne(poemId);
 
-    // Check if user owns the poem
     if (poem.authorId !== userId) {
       throw new ForbiddenException('You can only get feedback on your own poems');
     }
 
-    // Get AI feedback
     const feedback = await this.aiService.getPoemFeedback(poem.title, poem.content);
-
-    // Calculate final quality score
     const qualityScore = this.aiService.calculateQualityScore(poem.content, feedback);
 
-    // Store feedback in database
     const aiFeedback = await this.prisma.aIFeedback.create({
       data: {
         poemId: poem.id,
@@ -124,11 +122,10 @@ export class PoemsService {
         strengths: feedback.strengths,
         improvements: feedback.improvements,
         suggestions: feedback.suggestions as any,
-        processingTime: 0, // Will be updated with actual time
+        processingTime: 0,
       },
     });
 
-    // Update poem's quality score
     await this.prisma.poem.update({
       where: { id: poemId },
       data: { qualityScore },
@@ -148,7 +145,6 @@ export class PoemsService {
     const skip = (page - 1) * limit;
 
     const where = this.buildWhereClause(filters);
-
     const orderBy = this.buildOrderByClause(sortBy);
 
     const [poems, total] = await Promise.all([
@@ -194,6 +190,7 @@ export class PoemsService {
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
+        blockchainData: true, // Include blockchain info
       },
     });
 
@@ -211,48 +208,47 @@ export class PoemsService {
    * Get poems by user
    */
   async findByUser(userId: string, page: number = 1, limit: number = 20) {
-  this.logger.log("🔄 Getting poems for user ID:", userId);
-  
-  // First, verify the user exists
-  const user = await this.prisma.user.findUnique({
-    where: { id: userId }
-  });
-  
-  this.logger.log("👤 User found:", user ? `Yes (${user.username})` : 'No user found');
-  
-  const skip = (page - 1) * limit;
+    this.logger.log("🔄 Getting poems for user ID:", userId);
+    
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId }
+    });
+    
+    this.logger.log("👤 User found:", user ? `Yes (${user.username})` : 'No user found');
+    
+    const skip = (page - 1) * limit;
 
-  const [poems, total] = await Promise.all([
-    this.prisma.poem.findMany({
-      where: {
-        authorId: userId,
-      },
-      skip,
-      take: limit,
-      include: {
-        author: true,
-      },
-    }),
-    this.prisma.poem.count({
-      where: {
-        authorId: userId,
-      },
-    }),
-  ]);
+    const [poems, total] = await Promise.all([
+      this.prisma.poem.findMany({
+        where: {
+          authorId: userId,
+        },
+        skip,
+        take: limit,
+        include: {
+          author: true,
+          blockchainData: true,
+        },
+      }),
+      this.prisma.poem.count({
+        where: {
+          authorId: userId,
+        },
+      }),
+    ]);
 
-  this.logger.log("📊 Total poems found:", total);
-  this.logger.log("📝 Poem items:", poems.map(p => ({ id: p.id, title: p.title, authorId: p.authorId })));
+    this.logger.log("📊 Total poems found:", total);
 
-  return {
-    items: poems.map(poem => new PoemResponseDto(poem)),
-    total,
-    page,
-    limit,
-    totalPages: Math.ceil(total / limit),
-    hasNext: page < Math.ceil(total / limit),
-    hasPrevious: page > 1,
-  };
-}
+    return {
+      items: poems.map(poem => new PoemResponseDto(poem)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasNext: page < Math.ceil(total / limit),
+      hasPrevious: page > 1,
+    };
+  }
 
   /**
    * Get user's drafts
@@ -295,21 +291,20 @@ export class PoemsService {
    * Update poem
    */
   async update(id: string, userId: string, updatePoemDto: UpdatePoemDto): Promise<PoemResponseDto> {
+    this.logger.log("Attempting to update poem");
     const poem = await this.findOne(id);
 
-    // Check ownership
     if (poem.authorId !== userId) {
       throw new ForbiddenException('You can only update your own poems');
     }
 
-    // Don't allow editing published poems (optional rule)
-    // if (poem.status === PoemStatus.PUBLISHED) {
-    //   throw new BadRequestException('Cannot edit published poems');
-    // }
+    // Don't allow editing minted poems
+    if (poem.blockchainData?.tokenId) {
+      throw new BadRequestException('Cannot edit poems that have been minted as NFTs');
+    }
 
     const updateData: any = { ...updatePoemDto };
 
-    // Recalculate excerpt if content changed
     if (updatePoemDto.content) {
       updateData.excerpt = this.generateExcerpt(updatePoemDto.content);
       updateData.readingTime = this.calculateReadingTime(updatePoemDto.content);
@@ -323,14 +318,18 @@ export class PoemsService {
         author: true,
       },
     });
+    
+    this.logger.log("Poem updated successfully: ", updatedPoem);
 
     return new PoemResponseDto(updatedPoem);
   }
 
   /**
-   * Publish a draft poem
+   * Publish a draft poem (with blockchain minting)
    */
   async publish(id: string, userId: string): Promise<PoemResponseDto> {
+    this.logger.log(`📤 Publishing poem ${id} for user ${userId}`);
+    
     const poem = await this.findOne(id);
 
     if (poem.authorId !== userId) {
@@ -341,6 +340,7 @@ export class PoemsService {
       throw new BadRequestException('Poem is already published');
     }
 
+    // Update poem status to PUBLISHED
     const publishedPoem = await this.prisma.poem.update({
       where: { id },
       data: {
@@ -355,7 +355,159 @@ export class PoemsService {
     // Increment user's poem count
     await this.usersService.incrementPoemCount(userId);
 
+    this.logger.log("Poem published blockchain minting triggered");
+
+    // Trigger blockchain minting (async)
+    await this.handlePublishWithBlockchain(id, userId);
+
+    this.logger.log("Blockcahin NFT successfully Minted");
+
     return new PoemResponseDto(publishedPoem);
+  }
+
+  /**
+   * Handle blockchain operations when publishing
+   */
+  private async handlePublishWithBlockchain(poemId: string, userId: string) {
+    this.logger.log(`⛓️ Starting blockchain operations for poem ${poemId}`);
+
+    try {
+      // Get user's wallet address
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { walletAddress: true },
+      });
+
+      if (!user?.walletAddress) {
+        this.logger.warn(`User ${userId} doesn't have a wallet address. Skipping blockchain minting.`);
+        return;
+      }
+
+      // Add minting job to queue (for async processing)
+      await this.blockchainQueue.add('mint-poem-nft', {
+        poemId,
+        userId,
+        walletAddress: user.walletAddress,
+      }, {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 2000,
+        },
+      });
+
+      this.logger.log(`✅ Blockchain minting job queued for poem ${poemId}`);
+    } catch (error) {
+      this.logger.error(`❌ Failed to queue blockchain job for poem ${poemId}:`, error);
+      // Don't throw - allow poem to be published even if blockchain fails
+    }
+  }
+
+  /**
+   * Process blockchain minting (called by queue worker)
+   */
+  /**
+ * Process blockchain minting (called by queue worker)
+ */
+async processPoemMinting(poemId: string, walletAddress: string) {
+  this.logger.log(`🔨 Processing NFT mint for poem ${poemId}`);
+
+  try {
+    const poem = await this.prisma.poem.findUnique({
+      where: { id: poemId },
+    });
+
+    if (!poem) {
+      throw new Error(`Poem ${poemId} not found`);
+    }
+
+    // Check if already minted
+    const existingBlockchainData = await this.prisma.blockchainData.findUnique({
+      where: { poemId },
+    });
+
+    if (existingBlockchainData?.tokenId) {
+      this.logger.log(`Poem ${poemId} already minted as token ${existingBlockchainData.tokenId}`);
+      return;
+    }
+
+    // Ensure contentHash is not null
+    const contentHash = poem.contentHash || this.generateContentHash(poem.content);
+
+    // Mint the NFT on blockchain
+    const mintResult = await this.blockchainService.mintPoemNFT(
+      poemId,
+      walletAddress,
+      {
+        title: poem.title,
+        content: poem.content,
+        contentHash: contentHash, // Now guaranteed to be string
+        tags: poem.tags,
+        mood: poem.mood || undefined,
+      }
+    );
+
+    this.logger.log(`✅ Poem ${poemId} minted successfully as token ${mintResult.tokenId}`);
+
+    return mintResult;
+  } catch (error) {
+    this.logger.error(`❌ Failed to mint NFT for poem ${poemId}:`, error);
+    throw error;
+  }
+}
+  /**
+   * Fractionalize a poem NFT (optional - for collective ownership)
+   */
+  async fractionalizePoemNFT(
+    poemId: string,
+    tokenId: string,
+    totalShares: number = 1000,
+    sharePrice: string = '0.01' // ETH per share
+  ) {
+    this.logger.log(`Fractionalizing poem ${poemId} with ${totalShares} shares`);
+
+    try {
+      const result = await this.blockchainService.fractionalizePoemNFT(
+        poemId,
+        tokenId,
+        totalShares,
+        sharePrice
+      );
+
+      this.logger.log(`✅ Poem ${poemId} fractionalized successfully`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to fractionalize poem ${poemId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get blockchain info for a poem
+   */
+  async getBlockchainInfo(poemId: string) {
+    const blockchainData = await this.prisma.blockchainData.findUnique({
+      where: { poemId },
+    });
+
+    if (!blockchainData) {
+      return null;
+    }
+
+    // Get current owner from blockchain
+    let currentOwner = '';
+    if (blockchainData.tokenId) {
+      try {
+        currentOwner = await this.blockchainService.getNFTOwner(blockchainData.tokenId);
+      } catch (error) {
+        this.logger.error('Failed to fetch NFT owner:', error);
+      }
+    }
+
+    return {
+      ...blockchainData,
+      currentOwner,
+    };
   }
 
   /**
@@ -366,6 +518,11 @@ export class PoemsService {
 
     if (poem.authorId !== userId) {
       throw new ForbiddenException('You can only unpublish your own poems');
+    }
+
+    // Don't allow unpublishing minted poems
+    if (poem.blockchainData?.tokenId) {
+      throw new BadRequestException('Cannot unpublish poems that have been minted as NFTs');
     }
 
     const unpublishedPoem = await this.prisma.poem.update({
@@ -389,6 +546,11 @@ export class PoemsService {
 
     if (poem.authorId !== userId) {
       throw new ForbiddenException('You can only delete your own poems');
+    }
+
+    // Don't allow deleting minted poems
+    if (poem.blockchainData?.tokenId) {
+      throw new BadRequestException('Cannot delete poems that have been minted as NFTs');
     }
 
     await this.prisma.poem.delete({
@@ -439,7 +601,7 @@ export class PoemsService {
    */
   private buildWhereClause(filters: any): Prisma.PoemWhereInput {
     const where: Prisma.PoemWhereInput = {
-      status: PoemStatus.PUBLISHED, // Only show published poems
+      status: PoemStatus.PUBLISHED,
     };
 
     if (filters.query) {
@@ -485,7 +647,6 @@ export class PoemsService {
       case 'quality':
         return { qualityScore: 'desc' };
       case 'trending':
-        // Simple trending: combination of recent + popular
         return { views: 'desc' };
       case 'recent':
       default:

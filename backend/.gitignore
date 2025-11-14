@@ -2,6 +2,9 @@
 /dist
 /node_modules
 /build
+/packages/contracts/node_modules
+/packages/contracts/deployed
+packages
 
 # Logs
 logs

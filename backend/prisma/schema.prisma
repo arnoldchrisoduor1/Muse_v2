@@ -150,6 +150,8 @@ model Poem {
   blockchainTxHash      String?
   nftTokenId            String?       @unique
   nftContractAddress    String?
+  isMinted       Boolean       @default(false)
+  blockchainData BlockchainData?
   
   // Metrics
   views                 Int           @default(0)
@@ -195,6 +197,82 @@ model Poem {
   @@index([createdAt])
   @@map("poems")
 }
+
+model BlockchainData {
+  id                      String    @id @default(cuid())
+  poemId                  String    @unique
+  poem                    Poem      @relation(fields: [poemId], references: [id], onDelete: Cascade)
+  
+  // NFT Data
+  tokenId                 String?   @unique
+  contractAddress         String?
+  transactionHash         String?
+  blockNumber             Int?
+  network                 String?   // 'localhost', 'polygon', 'base', etc.
+  metadataURI             String?
+  
+  // Fractionalization Data
+  fractionalTokenAddress  String?
+  totalShares             Int?
+  sharesAvailable         Int?
+  sharePrice              String?   // Stored as string to preserve precision
+  
+  // Status
+  mintStatus              MintStatus @default(PENDING)
+  mintedAt                DateTime?
+  lastSyncedAt            DateTime?
+  
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@index([tokenId])
+  @@index([contractAddress])
+  @@index([mintStatus])
+}
+
+enum MintStatus {
+  PENDING
+  MINTING
+  MINTED
+  FAILED
+}
+
+model RevenueDistribution {
+  id              String    @id @default(cuid())
+  poemId          String
+  tokenId         String
+  
+  // Contributors and their share percentages
+  contributors    Json      // Array of { address: string, sharePercentage: number }
+  
+  transactionHash String?
+  setupAt         DateTime  @default(now())
+  lastDistribution DateTime?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([poemId])
+  @@index([tokenId])
+}
+
+
+model BlockchainError {
+  id           String    @id @default(cuid())
+  poemId       String?
+  operation    String    // 'mint', 'fractionalize', 'distribute', etc.
+  errorMessage String    @db.Text
+  errorStack   String?   @db.Text
+  resolved     Boolean   @default(false)
+  
+  createdAt    DateTime  @default(now())
+
+  @@index([poemId])
+  @@index([operation])
+  @@index([resolved])
+}
+
+
 
 // ============================================================================
 // COLLABORATOR (Fractional Ownership)

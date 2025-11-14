@@ -109,6 +109,7 @@ interface SoloPoetState {
   deleteDraft: (id: string) => void;
   setPoems: (poems: Poem[]) => void;
   loadDraftForEditing: (draftId: string) => void;
+  updateDraftPoem: () => void;
 }
 
 // --- API SETUP ---
@@ -284,6 +285,50 @@ export const useSoloPoetStore = create<SoloPoetState>()(
         }
       },
 
+      updateDraftPoem: async () => {
+        const { currentDraft } = get();
+
+        if (!currentDraft || !currentDraft.content.trim()) {
+          console.warn(
+            "Cannot update draft: current draft content is empty or missing."
+          );
+          return;
+        }
+
+        const accessToken = getAccessToken();
+        setAuthHeader(accessToken);
+
+        try {
+          const { isAnonymous, publishNow, ...createPoemPayload } = mapDraftToApiPayload(currentDraft);
+
+          console.log("Update payload being sent: ", createPoemPayload);
+
+          const isExistingDraft = !!currentDraft.id;
+
+          let response: AxiosResponse<any>;
+
+          if (isExistingDraft) {
+            response = await poemsApiClient.patch(
+              `/${currentDraft.id}`,
+              createPoemPayload
+            );
+          } else {
+            response = await poemsApiClient.patch(`/${currentDraft.id}`, createPoemPayload);
+          }
+
+          console.log("Draft updated successfully: ", response);
+
+          if (!isExistingDraft && response.data.id) {
+            set({ currentDraft: { ...currentDraft, id: response.data.id } });
+          }
+
+          // Reload poems to get updated list
+          await get().loadPoems();
+        } catch (error) {
+          console.error("Failed to save draft:", error);
+        }
+      },
+
       // Generate AI Feedback
       generateAIFeedback: async () => {
         const { currentDraft } = get();
@@ -356,13 +401,19 @@ export const useSoloPoetStore = create<SoloPoetState>()(
         setAuthHeader(getAccessToken());
 
         try {
+          if (!draft.id) {
+            throw new Error("Cannot publish a draft without an id");
+          }
+
           const publishPayload = {
             ...mapDraftToApiPayload(draft),
             publishNow: true,
           };
 
+          console.log("Publishing payload: ", publishPayload);
+
           const response = await poemsApiClient.post(
-            "/publish",
+            `/${encodeURIComponent(draft.id)}/publish`,
             publishPayload
           );
 

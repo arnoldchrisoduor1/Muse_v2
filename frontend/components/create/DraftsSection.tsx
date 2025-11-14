@@ -1,22 +1,26 @@
 "use client";
-import { motion } from 'framer-motion';
-import { FileText, Edit, Trash2, Plus } from 'lucide-react';
-import Link from 'next/link';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { useSoloPoetStore } from '@/lib/store/solo-poet-store';
+import { motion } from "framer-motion";
+import { FileText, Edit, Trash2, Plus, Rocket } from "lucide-react";
+import Link from "next/link";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { useSoloPoetStore } from "@/lib/store/solo-poet-store";
 
 export function DraftsSection() {
   const { drafts, deleteDraft, loadPoems } = useSoloPoetStore();
 
   const handleDeleteDraft = async (id: string) => {
-    if (confirm('Are you sure you want to delete this draft? This action cannot be undone.')) {
+    if (
+      confirm(
+        "Are you sure you want to delete this draft? This action cannot be undone."
+      )
+    ) {
       try {
         await deleteDraft(id);
         // The store will automatically update the state
       } catch (error) {
-        console.error('Failed to delete draft:', error);
-        alert('Failed to delete draft. Please try again.');
+        console.error("Failed to delete draft:", error);
+        alert("Failed to delete draft. Please try again.");
       }
     }
   };
@@ -30,7 +34,7 @@ export function DraftsSection() {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">Recent Drafts</h2>
         <span className="text-text-muted text-sm">
-          {drafts?.length} {drafts?.length === 1 ? 'draft' : 'drafts'}
+          {drafts?.length} {drafts?.length === 1 ? "draft" : "drafts"}
         </span>
       </div>
 
@@ -58,24 +62,33 @@ export function DraftsSection() {
             >
               <Card className="p-4 hover:bg-white/10 transition-all duration-300 h-full group flex flex-col">
                 {/* Content - Clickable for editing */}
-                <Link href={`/poem/edit/${draft.id}`} className="block mb-3 grow">
-                  <h3 className="font-semibold mb-2 truncate">{draft.title || 'Untitled'}</h3>
+                <Link
+                  href={`/poem/edit/${draft.id}`}
+                  className="block mb-3 grow"
+                >
+                  <h3 className="font-semibold mb-2 truncate">
+                    {draft.title || "Untitled"}
+                  </h3>
                   <p className="text-text-secondary text-sm mb-3 line-clamp-3 min-h-[60px]">
-                    {draft?.content || 'No content yet...'}
+                    {draft?.content || "No content yet..."}
                   </p>
                   <div className="flex items-center justify-between text-xs text-text-muted">
                     {draft.qualityScore && (
-                      <span className={`px-2 py-1 rounded-full ${
-                        draft.qualityScore >= 85 ? 'bg-accent/20 text-accent' :
-                        draft.qualityScore >= 70 ? 'bg-primary/20 text-primary' :
-                        'bg-warning/20 text-warning'
-                      }`}>
+                      <span
+                        className={`px-2 py-1 rounded-full ${
+                          draft.qualityScore >= 85
+                            ? "bg-accent/20 text-accent"
+                            : draft.qualityScore >= 70
+                            ? "bg-primary/20 text-primary"
+                            : "bg-warning/20 text-warning"
+                        }`}
+                      >
                         {draft.qualityScore}%
                       </span>
                     )}
                   </div>
                 </Link>
-                
+
                 {/* Action Buttons */}
                 <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200/20">
                   <Link href={`/poem/edit/${draft.id}`}>
@@ -88,8 +101,21 @@ export function DraftsSection() {
                       Edit
                     </Button>
                   </Link>
+
+                  {/* Add Publish button */}
+                  <Link href={`/poem/publish/${draft.id}`}>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon={Rocket}
+                      className="text-green-400 hover:text-green-300 opacity-70 hover:opacity-100 transition-opacity"
+                    >
+                      Publish
+                    </Button>
+                  </Link>
+
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     icon={Trash2}
                     onClick={() => handleDeleteDraft(draft.id!)}

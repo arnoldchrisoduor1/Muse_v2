@@ -136,7 +136,6 @@ export class UsersController {
   @ApiOperation({ summary: 'Connect wallet to user account' })
   @ApiResponse({ status: 200, description: 'Wallet connected successfully' })
   @ApiResponse({ status: 409, description: 'Wallet already connected' })
-  // TODO: Add JwtAuthGuard when auth is implemented
   async connectWallet(
     @Param('id') id: string,
     @Body('walletAddress') walletAddress: string,
@@ -151,7 +150,6 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'Successfully followed user' })
   @ApiResponse({ status: 400, description: 'Cannot follow yourself' })
   @ApiResponse({ status: 409, description: 'Already following this user' })
-  // TODO: Add JwtAuthGuard when auth is implemented
   async followUser(
     @Param('id') followerId: string,
     @Param('targetId') followingId: string,

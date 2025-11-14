@@ -1,26 +1,26 @@
 "use client";
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Save, Wand2 } from 'lucide-react';
-import Link from 'next/link';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { useSoloPoetStore } from '@/lib/store/solo-poet-store';
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { ArrowLeft, Save, Wand2, Rocket } from "lucide-react";
+import Link from "next/link";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { useSoloPoetStore } from "@/lib/store/solo-poet-store";
 
 export default function EditPoemPage() {
   const params = useParams();
   const router = useRouter();
   const poemId = params.id as string;
-  
-  const { 
-    drafts, 
-    currentDraft, 
-    updateDraft, 
-    saveDraft, 
+
+  const {
+    drafts,
+    currentDraft,
+    updateDraft,
+    updateDraftPoem,
     generateAIFeedback,
     isGeneratingFeedback,
-    loadPoems 
+    loadPoems,
   } = useSoloPoetStore();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -29,26 +29,26 @@ export default function EditPoemPage() {
   useEffect(() => {
     const loadDraft = async () => {
       setIsLoading(true);
-      
+
       try {
         // First, ensure we have the latest poems
         await loadPoems();
-        
+
         // Find the draft in the store
-        const draftToEdit = drafts.find(draft => draft.id === poemId);
-        
+        const draftToEdit = drafts.find((draft) => draft.id === poemId);
+
         if (draftToEdit) {
           // Set as current draft for editing
           useSoloPoetStore.setState({ currentDraft: draftToEdit });
         } else {
-          console.error('Draft not found');
+          console.error("Draft not found");
           // Redirect to create page if draft not found
-          router.push('/create');
+          router.push("/create");
           return;
         }
       } catch (error) {
-        console.error('Error loading draft:', error);
-        router.push('/create');
+        console.error("Error loading draft:", error);
+        router.push("/create");
       } finally {
         setIsLoading(false);
       }
@@ -61,13 +61,11 @@ export default function EditPoemPage() {
 
   const handleSave = async () => {
     try {
-      await saveDraft();
-      // Show success message and redirect to create page
-      alert('Draft saved successfully!');
-      router.push('/create');
+      await updateDraftPoem();
+      console.log("Draft successfulyy updated");
+      router.push("/create");
     } catch (error) {
-      console.error('Failed to save draft:', error);
-      alert('Failed to save draft. Please try again.');
+      console.error("Failed to update draft:", error);
     }
   };
 
@@ -75,8 +73,8 @@ export default function EditPoemPage() {
     try {
       await generateAIFeedback();
     } catch (error) {
-      console.error('Failed to generate AI feedback:', error);
-      alert('Failed to generate AI feedback. Please try again.');
+      console.error("Failed to generate AI feedback:", error);
+      alert("Failed to generate AI feedback. Please try again.");
     }
   };
 
@@ -98,7 +96,8 @@ export default function EditPoemPage() {
         <Card className="p-8 text-center">
           <h2 className="text-xl font-semibold mb-4">Draft Not Found</h2>
           <p className="text-text-secondary mb-6">
-            The draft you're trying to edit doesn't exist or you don't have permission to access it.
+            The draft you're trying to edit doesn't exist or you don't have
+            permission to access it.
           </p>
           <Link href="/create">
             <Button variant="primary" icon={ArrowLeft}>
@@ -134,8 +133,17 @@ export default function EditPoemPage() {
               onClick={handleAIFeedback}
               disabled={isGeneratingFeedback || !currentDraft.content.trim()}
             >
-              {isGeneratingFeedback ? 'Generating...' : 'AI Feedback'}
+              {isGeneratingFeedback ? "Generating..." : "AI Feedback"}
             </Button>
+            <Link href={`/poem/publish/${poemId}`}>
+              <Button
+                variant="primary"
+                icon={Rocket}
+                disabled={!currentDraft.content.trim()}
+              >
+                Publish
+              </Button>
+            </Link>
             <Button
               variant="secondary"
               icon={Save}
@@ -166,7 +174,7 @@ export default function EditPoemPage() {
           <input
             id="title"
             type="text"
-            value={currentDraft.title || ''}
+            value={currentDraft.title || ""}
             onChange={(e) => updateDraft({ title: e.target.value })}
             placeholder="Enter poem title..."
             className="w-full p-3 bg-background border border-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -180,7 +188,7 @@ export default function EditPoemPage() {
           </label>
           <textarea
             id="content"
-            value={currentDraft.content || ''}
+            value={currentDraft.content || ""}
             onChange={(e) => updateDraft({ content: e.target.value })}
             placeholder="Write your poem here..."
             rows={15}
@@ -196,62 +204,70 @@ export default function EditPoemPage() {
           <input
             id="tags"
             type="text"
-            value={currentDraft.tags?.join(', ') || ''}
-            onChange={(e) => updateDraft({ 
-              tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean)
-            })}
+            value={currentDraft.tags?.join(", ") || ""}
+            onChange={(e) =>
+              updateDraft({
+                tags: e.target.value
+                  .split(",")
+                  .map((tag) => tag.trim())
+                  .filter(Boolean),
+              })
+            }
             placeholder="love, nature, hope..."
             className="w-full p-3 bg-background border border-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
           />
         </Card>
 
         {/* AI Suggestions (if any) */}
-        {currentDraft.aiSuggestions && currentDraft.aiSuggestions.length > 0 && (
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">AI Suggestions</h3>
-            <div className="space-y-3">
-              {currentDraft.aiSuggestions.map((suggestion, index) => (
-                <div
-                  key={suggestion.id}
-                  className={`p-3 rounded-lg border ${
-                    suggestion.applied 
-                      ? 'border-accent bg-accent/10' 
-                      : 'border-gray-700 bg-background'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-sm font-medium text-text-secondary capitalize">
-                        {suggestion.type.replace('_', ' ')}:
-                      </span>
-                      <p className="mt-1">{suggestion.suggestion}</p>
-                      {suggestion.reasoning && (
-                        <p className="text-sm text-text-muted mt-2">
-                          {suggestion.reasoning}
-                        </p>
-                      )}
+        {currentDraft.aiSuggestions &&
+          currentDraft.aiSuggestions.length > 0 && (
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">AI Suggestions</h3>
+              <div className="space-y-3">
+                {currentDraft.aiSuggestions.map((suggestion, index) => (
+                  <div
+                    key={suggestion.id}
+                    className={`p-3 rounded-lg border ${
+                      suggestion.applied
+                        ? "border-accent bg-accent/10"
+                        : "border-gray-700 bg-background"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <span className="text-sm font-medium text-text-secondary capitalize">
+                          {suggestion.type.replace("_", " ")}:
+                        </span>
+                        <p className="mt-1">{suggestion.suggestion}</p>
+                        {suggestion.reasoning && (
+                          <p className="text-sm text-text-muted mt-2">
+                            {suggestion.reasoning}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                          // Implement suggestion application logic
+                          const updatedSuggestions = [
+                            ...currentDraft.aiSuggestions!,
+                          ];
+                          updatedSuggestions[index] = {
+                            ...suggestion,
+                            applied: !suggestion.applied,
+                          };
+                          updateDraft({ aiSuggestions: updatedSuggestions });
+                        }}
+                      >
+                        {suggestion.applied ? "Applied" : "Apply"}
+                      </Button>
                     </div>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => {
-                        // Implement suggestion application logic
-                        const updatedSuggestions = [...currentDraft.aiSuggestions!];
-                        updatedSuggestions[index] = {
-                          ...suggestion,
-                          applied: !suggestion.applied
-                        };
-                        updateDraft({ aiSuggestions: updatedSuggestions });
-                      }}
-                    >
-                      {suggestion.applied ? 'Applied' : 'Apply'}
-                    </Button>
                   </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
+                ))}
+              </div>
+            </Card>
+          )}
       </motion.div>
     </div>
   );

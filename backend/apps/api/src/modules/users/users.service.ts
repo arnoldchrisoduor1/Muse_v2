@@ -235,6 +235,7 @@ export class UsersService {
    * Connect wallet to user account
    */
   async connectWallet(id: string, walletAddress: string): Promise<UserResponseDto> {
+    this.logger.log("Connecting user's address");
     // Check if wallet is already connected to another user
     const existingWallet = await this.prisma.user.findUnique({
       where: { walletAddress },
@@ -249,6 +250,8 @@ export class UsersService {
       data: { walletAddress },
       select: this.getUserSelectFields(),
     });
+
+    this.logger.log("User address successfully added");
 
     return new UserResponseDto(user);
   }
