@@ -164,7 +164,7 @@ export function ProfileHeader({
                 {isOwnProfile ? (
                   <>
                     <Button variant="outline" icon={Edit} className="flex-1 sm:flex-none" onClick={() => setIsEditModalOpen(true)}>
-                      Edit Profile
+                      Edit
                     </Button>
                     <Button variant="primary" icon={Plus}>
                       New Poem

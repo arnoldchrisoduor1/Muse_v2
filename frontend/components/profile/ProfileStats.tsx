@@ -5,14 +5,15 @@ import { Card } from '@/components/ui/Card';
 
 interface ProfileStatsProps {
   profile: any;
+  poems: any[];
 }
 
-export function ProfileStats({ profile }: ProfileStatsProps) {
+export function ProfileStats({ profile, poems }: ProfileStatsProps) {
   const stats = [
     {
       icon: BookOpen,
       label: 'Poems Published',
-      value: profile.totalPoems,
+      value: poems.length,
       color: 'text-primary',
     },
     {
@@ -50,7 +51,7 @@ export function ProfileStats({ profile }: ProfileStatsProps) {
   return (
     <Card className="p-6">
       <h3 className="font-semibold mb-4">Stats & Achievements</h3>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           

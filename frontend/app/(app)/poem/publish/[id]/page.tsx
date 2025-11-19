@@ -157,9 +157,9 @@ export default function PublishPoemPage() {
         className="mb-8"
       >
         <div className="flex items-center gap-4 mb-4">
-          <Link href={`/poem/edit/${poemId}`}>
+          <Link href={`/create`}>
             <Button variant="primary" icon={ArrowLeft}>
-              Back to Edit
+              Create
             </Button>
           </Link>
           <h1 className="text-3xl font-bold gradient-text">Publish Your Poem</h1>
@@ -169,7 +169,7 @@ export default function PublishPoemPage() {
         </p>
       </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
         {/* Left Column - Poem Preview */}
         <div className="lg:col-span-2 space-y-6">
           {/* Poem Preview */}
@@ -229,11 +229,11 @@ export default function PublishPoemPage() {
 
         {/* Right Column - Publishing Options */}
         <div className="space-y-6">
-          <Card className="p-6">
+          <Card className="p-4">
             <h3 className="font-semibold mb-4">Publishing Options</h3>
             
             {/* License Type */}
-            <div className="space-y-3 mb-6">
+            <div className="space-y-6 mb-6">
               <label className="text-sm font-medium text-text-primary">License Type</label>
               {licenseOptions.map((option) => {
                 const Icon = option.icon;

@@ -73,7 +73,7 @@ export class BlockchainProcessor {
         {
           title: poem.title,
           content: poem.content,
-          contentHash: contentHash, // Now guaranteed to be string
+          contentHash: contentHash,
           tags: poem.tags,
           mood: poem.mood || undefined,
         }

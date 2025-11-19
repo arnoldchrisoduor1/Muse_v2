@@ -121,10 +121,10 @@ export default function EditPoemPage() {
           <div className="flex items-center gap-4">
             <Link href="/create">
               <Button variant="outline" icon={ArrowLeft}>
-                Back to Create
+                Create
               </Button>
             </Link>
-            <h1 className="text-3xl font-bold gradient-text">Edit Poem</h1>
+            <h1 className="text-md xl:text-3xl font-bold gradient-text">Edit Poem</h1>
           </div>
           <div className="flex gap-3">
             <Button
@@ -133,7 +133,7 @@ export default function EditPoemPage() {
               onClick={handleAIFeedback}
               disabled={isGeneratingFeedback || !currentDraft.content.trim()}
             >
-              {isGeneratingFeedback ? "Generating..." : "AI Feedback"}
+              {isGeneratingFeedback ? "Generating..." : "Suggest"}
             </Button>
             <Link href={`/poem/publish/${poemId}`}>
               <Button
@@ -150,7 +150,7 @@ export default function EditPoemPage() {
               onClick={handleSave}
               disabled={!currentDraft.content.trim()}
             >
-              Save Changes
+              Save
             </Button>
           </div>
         </div>

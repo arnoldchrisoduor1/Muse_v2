@@ -50,12 +50,6 @@ export function PoemEditor() {
     }
   };
 
-  const handlePublish = async () => {
-    if (currentDraft) {
-      await publishPoem(currentDraft);
-    }
-  };
-
   if (!currentDraft) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -68,7 +62,7 @@ export function PoemEditor() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
       {/* Editor Column */}
       <div className="lg:col-span-2 space-y-6">
         {/* Title Input */}
@@ -105,7 +99,7 @@ export function PoemEditor() {
           />
           
           {/* Editor Actions */}
-          <div className="flex flex-wrap gap-3 mt-4">
+          <div className="flex flex-wrap gap-2 mt-4">
             <Button 
               variant="primary" 
               icon={Sparkles}
@@ -113,7 +107,7 @@ export function PoemEditor() {
               onClick={handleGetFeedback}
               disabled={!currentDraft.content.trim() || currentDraft.content.length < 50}
             >
-              {isGeneratingFeedback ? 'Analyzing...' : 'Get AI Feedback'}
+              {isGeneratingFeedback ? 'Analyzing...' : 'AI Feedback'}
             </Button>
             
             <Button 
@@ -124,6 +118,27 @@ export function PoemEditor() {
               {showAISuggestions ? 'Hide Suggestions' : 'Show Suggestions'}
             </Button>
           </div>
+        </Card>
+
+        <Card className="p-6">
+          <label htmlFor="tags" className="block text-sm font-medium mb-2">
+            Tags (not mandatory)
+          </label>
+          <input
+            id="tags"
+            type="text"
+            value={currentDraft.tags?.join(", ") || ""}
+            onChange={(e) =>
+              updateDraft({
+                tags: e.target.value
+                  .split(",")
+                  .map((tag) => tag.trim())
+                  .filter(Boolean),
+              })
+            }
+            placeholder="love, nature, hope..."
+            className="w-full p-3 outline-none bg-background border border-primary/50 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+          />
         </Card>
       </div>
       

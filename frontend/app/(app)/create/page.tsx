@@ -62,7 +62,7 @@ export default function CreatePage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12"
+        className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12"
       >
         {quickActions.map((action, index) => {
           const Icon = action.icon;

@@ -110,6 +110,8 @@ interface SoloPoetState {
   setPoems: (poems: Poem[]) => void;
   loadDraftForEditing: (draftId: string) => void;
   updateDraftPoem: () => void;
+  likeAPoem: (poemId: string) => void;
+  unlikeAPoem: (poemId: string) => void;
 }
 
 // --- API SETUP ---
@@ -238,6 +240,36 @@ export const useSoloPoetStore = create<SoloPoetState>()(
         if (draftToEdit) {
           set({ currentDraft: draftToEdit });
         }
+      },
+
+      likeAPoem: async(poemId: string) => {
+
+        try {
+          const response = await poemsApiClient.post(
+              `/${poemId}/likes`
+            );
+
+            console.log("Liked poem successfully", response);
+        } catch (err) {
+          console.error("Cold not add like", err);
+          throw err;
+        }
+
+      },
+
+    unlikeAPoem: async(poemId: string) => {
+
+        try {
+          const response = await poemsApiClient.delete(
+              `/${poemId}/likes`
+            );
+
+            console.log("Unliked poem successfully", response);
+        } catch (err) {
+          console.error("Cold not remove like", err);
+          throw err;
+        }
+
       },
 
       // Save draft

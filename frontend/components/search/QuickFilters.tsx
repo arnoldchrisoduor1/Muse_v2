@@ -63,7 +63,7 @@ export function QuickFilters() {
   return (
     <Card className="p-6">
       <h2 className="text-xl font-bold mb-4">Quick Discover</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {quickFilters.map((filter, index) => {
           const Icon = filter.icon;
           

@@ -7,10 +7,13 @@ import Link from 'next/link';
 import { PoemEditor } from '@/components/poem/PoemEditor';
 import { useSoloPoetStore } from '@/lib/store/solo-poet-store';
 import { Button } from '@/components/ui/Button';
+import { useRouter } from 'next/navigation';
 
 export default function NewPoemPage() {
   const { createNewDraft, currentDraft, saveDraft, isPublishing } = useSoloPoetStore();
   const [ loading, setLoading ] = useState(false);
+
+  const router = useRouter();
 
   useEffect(() => {
     // Create new draft when page loads
@@ -24,6 +27,7 @@ export default function NewPoemPage() {
       setLoading(true);
       await saveDraft();
       setLoading(false);
+      router.push('/create');
     } catch (error) {
       console.log("Error saving draft: ", error);
       setLoading(false);
@@ -38,28 +42,28 @@ export default function NewPoemPage() {
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center justify-between mb-6"
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-start gap-4">
           <Link href="/create">
             <Button variant="outline" size="sm" icon={ArrowLeft}>
               Back
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold gradient-text">Create New Poem</h1>
-            <p className="text-text-secondary">
+            <h1 className="text-3xl font-bold gradient-text">Create Poem</h1>
+            <p className="text-text-secondary text-sm">
               Write your masterpiece. AI suggestions will help improve quality.
             </p>
           </div>
-        </div>
-        
-        <Button 
+          <Button 
           variant="outline" 
           icon={Save}
           onClick={handleSaveDraft}
           disabled={!currentDraft?.content.trim()}
         >
-          { loading ? 'Saving...' : 'Save Draft' }
+          { loading ? 'Saving...' : 'Save' }
         </Button>
+        </div>
+        
       </motion.div>
 
       {/* Editor */}

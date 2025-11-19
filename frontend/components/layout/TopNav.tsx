@@ -157,7 +157,7 @@ export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
                   }
                   whileHover={!isDisabled ? { scale: 1.02 } : {}}
                   whileTap={!isDisabled ? { scale: 0.98 } : {}}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all hover:cursor-pointer ${
                     isActive
                       ? "bg-white/20 text-white border border-white/30"
                       : isDisabled
@@ -199,11 +199,11 @@ export function TopNav({ onToggleSidebar, isSidebarOpen }: TopNavProps) {
                   disabled={isLoading}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-error/20 text-error hover:bg-error/30 border border-error/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-error/20 text-error hover:bg-error/30 hover:cursor-pointer border border-error/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Sign out"
                 >
-                  <LogOut size={16} />
-                  <span className="text-sm font-medium">Sign Out</span>
+                  <span className=""><LogOut size={16} /></span>
+                  <span className="text-sm font-medium md:hidden">Sign Out</span>
                 </motion.button>
               </div>
             ) : (

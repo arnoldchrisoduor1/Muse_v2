@@ -266,7 +266,7 @@ export default function ProfilePage() {
             <BadgeDisplay badges={viewedProfile.badges} />
 
             {/* Quick Stats */}
-            <ProfileStats profile={viewedProfile} />
+            <ProfileStats profile={viewedProfile} poems={publishedPoems} />
           </div>
 
           {/* Main Content */}
@@ -285,14 +285,6 @@ export default function ProfilePage() {
 
               {isOwnProfile && (
                 <div className="flex gap-3 w-full sm:w-auto">
-                  <Button
-                    variant="outline"
-                    icon={Edit}
-                    className="flex-1 sm:flex-none"
-                    onClick={() => setIsEditModalOpen(true)}
-                  >
-                    Edit Profile
-                  </Button>
                   {!viewedProfile.walletAddress && (
                     <Button
                       variant="primary"
@@ -303,13 +295,6 @@ export default function ProfilePage() {
                       Connect Wallet
                     </Button>
                   )}
-                  <Button
-                    variant="primary"
-                    icon={Plus}
-                    className="flex-1 sm:flex-none"
-                  >
-                    New Poem
-                  </Button>
                 </div>
               )}
             </div>

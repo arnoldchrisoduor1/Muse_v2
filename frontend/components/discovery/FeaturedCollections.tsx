@@ -25,7 +25,7 @@ export function FeaturedCollections({ collections }: FeaturedCollectionsProps) {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {collections.map((collection, index) => (
           <motion.div
             key={collection.id}

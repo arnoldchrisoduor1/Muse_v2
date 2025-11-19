@@ -38,9 +38,6 @@ sleep 5
 print_info "Deploying contracts..."
 npx hardhat run scripts/deploy.ts --network localhost
 
-print_info "Minting sample poem..."
-npx hardhat run scripts/mint-sample.ts --network localhost
-
 # Copy environment variables to backend
 print_info "Setting up backend environment..."
 cp deployed/.contracts.env ../../backend/.contracts.env

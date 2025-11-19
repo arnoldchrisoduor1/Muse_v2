@@ -162,7 +162,6 @@ export class UsersController {
   @ApiOperation({ summary: 'Unfollow a user' })
   @ApiResponse({ status: 200, description: 'Successfully unfollowed user' })
   @ApiResponse({ status: 404, description: 'Follow relationship not found' })
-  // TODO: Add JwtAuthGuard when auth is implemented
   async unfollowUser(
     @Param('id') followerId: string,
     @Param('targetId') followingId: string,
