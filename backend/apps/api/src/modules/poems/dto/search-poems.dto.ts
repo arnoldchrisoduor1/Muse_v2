@@ -1,56 +1,67 @@
-import { IsOptional, IsString, IsArray, IsEnum, IsInt, Min, Max } from 'class-validator';
-import { Type } from 'class-transformer';
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { PoemMood, LicenseType, PoemStatus } from '@prisma/client';
+// modules/poems/dto/search-poems.dto.ts
+import { IsOptional, IsString, IsNumber, IsArray, IsEnum } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { PoemStatus, LicenseType, PoemMood } from '@prisma/client';
 
 export class SearchPoemsDto {
-  @ApiPropertyOptional()
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   query?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  authorId?: string;
-
-  @ApiPropertyOptional({ type: [String] })
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
   tags?: string[];
 
-  @ApiPropertyOptional({ enum: PoemMood, isArray: true })
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsArray()
+  themes?: string[];
+
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsArray()
   @IsEnum(PoemMood, { each: true })
   moods?: PoemMood[];
 
-  @ApiPropertyOptional({ minimum: 0, maximum: 100 })
+  @ApiProperty({ required: false })
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  @Max(100)
+  @IsNumber()
   minQualityScore?: number;
 
-  @ApiPropertyOptional({ enum: ['recent', 'popular', 'quality', 'trending'] })
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsNumber()
+  maxQualityScore?: number;
+
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
-  sortBy?: 'recent' | 'popular' | 'quality' | 'trending';
+  authorId?: string;
 
-  @ApiPropertyOptional({ minimum: 1, default: 1 })
+  @ApiProperty({ required: false, enum: PoemStatus })
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
+  @IsEnum(PoemStatus)
+  status?: PoemStatus;
+
+  @ApiProperty({ required: false, enum: LicenseType })
+  @IsOptional()
+  @IsEnum(LicenseType)
+  licenseType?: LicenseType;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  sortBy?: string = 'recent';
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsNumber()
   page?: number = 1;
 
-  @ApiPropertyOptional({ minimum: 1, maximum: 100, default: 20 })
+  @ApiProperty({ required: false })
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
+  @IsNumber()
   limit?: number = 20;
 }

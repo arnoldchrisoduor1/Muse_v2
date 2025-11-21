@@ -7,9 +7,11 @@ import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PoemsModule } from './modules/poems/poems.module';
+import { PoemsDiscoveryController } from './modules/poems/poems-discovery.controller';
 import { AiModule } from './modules/ai/ai.module';
 import { LikesModule } from './modules/likes/likes.module';
 import { CommentsModule } from './modules/comments/comments.module';
+import { BookmarksModule } from './modules/bookmarks/bookmarks.module';
 import { BlockchainModule } from './modules/blockchain/blockchain.module';
 
 import { AppController } from './app.controller';
@@ -80,9 +82,10 @@ import configuration from './config/configuration';
     AiModule,
     LikesModule,
     CommentsModule,
+    BookmarksModule,
     BlockchainModule
   ],
-  controllers: [AppController],
+  controllers: [AppController, PoemsDiscoveryController],
   providers: [
     RedisHealthService, // Add this line
     {

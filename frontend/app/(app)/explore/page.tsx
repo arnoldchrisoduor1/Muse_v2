@@ -9,6 +9,7 @@ import { QuickFilters } from "@/components/search/QuickFilters";
 import { useDiscoveryStore } from "@/lib/store/discovery-store";
 import { Button } from "@/components/ui/Button";
 import { useAuthStore } from "@/lib/store/auth-store"; // adjust path if needed
+import { useRouter } from "next/navigation";
 
 export default function ExplorePage() {
   const [activeTab, setActiveTab] = useState<"discover" | "search">("discover");
@@ -23,6 +24,7 @@ export default function ExplorePage() {
   } = useDiscoveryStore();
 
   const { user } = useAuthStore();
+  const router = useRouter();
 
   // state for modal visibility
   const [showAnonModal, setShowAnonModal] = useState(false);
@@ -32,6 +34,8 @@ export default function ExplorePage() {
     loadRecentPoems();
     loadFeaturedCollections();
   }, [loadTrendingPoems, loadRecentPoems, loadFeaturedCollections]);
+
+  console.log("Trending Poems", trendingPoems);
 
   // Show the modal once for newly-created anonymous accounts
   useEffect(() => {
@@ -70,6 +74,18 @@ export default function ExplorePage() {
     markModalShown();
     setShowAnonModal(false);
   };
+
+  const handleViewAllTrending = () => {
+    router.push('/explore/trending');
+  }
+
+  const handleViewAllRecent = () => {
+    router.push('/explore/recent');
+  }
+
+  const handleViewAllCollections = () => {
+    router.push('/collections');
+  }
 
   // Copies a single value to clipboard and gives simple visual feedback
   const copyToClipboard = async (text: string) => {
@@ -153,6 +169,11 @@ export default function ExplorePage() {
         <div className="space-y-8">
           <SearchInterface />
 
+           {activeTab === "search" ? (
+        /* Search Interface */
+        <div className="space-y-8">
+          <SearchInterface />
+
           {searchResults && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -169,6 +190,63 @@ export default function ExplorePage() {
               <PoemGrid poems={searchResults.poems} />
             </motion.div>
           )}
+        </div>
+      ) : (
+        /* Discovery Interface */
+        <div className="space-y-12">
+          {/* Quick Filters */}
+          <QuickFilters />
+
+          {/* Trending Poems */}
+          <motion.section
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <TrendingUp className="text-secondary" />
+                Trending Now
+              </h2>
+              <Button variant="outline" size="sm" onClick={handleViewAllTrending}>
+                View All
+              </Button>
+            </div>
+            <PoemGrid poems={trendingPoems} />
+          </motion.section>
+
+          {/* Featured Collections */}
+          <motion.section
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <FeaturedCollections 
+              collections={featuredCollections}
+              onViewAll={handleViewAllCollections}
+            />
+          </motion.section>
+
+          {/* Recent Poems */}
+          <motion.section
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <Clock className="text-primary" />
+                Recently Published
+              </h2>
+              <Button variant="outline" size="sm" onClick={handleViewAllRecent}>
+                View All
+              </Button>
+            </div>
+            <PoemGrid poems={recentPoems} />
+          </motion.section>
+        </div>
+      )}
+
         </div>
       ) : (
         /* Discovery Interface */

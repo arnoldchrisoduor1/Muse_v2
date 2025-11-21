@@ -1,8 +1,10 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class LikesService {
+  private readonly logger =  new Logger(LikesService.name);
   constructor(private prisma: PrismaService) {}
 
   /**
@@ -39,6 +41,7 @@ export class LikesService {
         data: { likes: { increment: 1 } },
       }),
     ]);
+    this.logger.log("Liked a poem");
 
     return { message: 'Poem liked successfully' };
   }
@@ -75,6 +78,7 @@ export class LikesService {
         data: { likes: { decrement: 1 } },
       }),
     ]);
+    this.logger.log("Unliked a poem");
 
     return { message: 'Poem unliked successfully' };
   }
@@ -91,6 +95,7 @@ export class LikesService {
         },
       },
     });
+    this.logger.log("Checked if user liked a poem");
 
     return !!like;
   }
@@ -115,6 +120,8 @@ export class LikesService {
     ]);
 
     const totalPages = Math.ceil(total / limit);
+
+    this.logger.log("Getting users who liked a poem");
 
     return {
       items: likes.map(like => like.user),

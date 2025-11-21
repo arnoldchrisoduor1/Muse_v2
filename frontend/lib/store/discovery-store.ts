@@ -1,5 +1,8 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
+import axios from "axios";
+import { useSoloPoetStore } from "./solo-poet-store";
+import { useAuthStore } from "./auth-store";
 
 interface Poem {
   id: string;
@@ -43,7 +46,7 @@ interface SearchFilters {
     start: Date | null;
     end: Date | null;
   };
-  sortBy: 'recent' | 'popular' | 'quality' | 'trending' | 'semantic';
+  sortBy: "recent" | "popular" | "quality" | "trending" | "semantic";
 }
 
 interface SearchResults {
@@ -67,33 +70,67 @@ interface DiscoveryState {
   searchFilters: SearchFilters;
   searchResults: SearchResults | null;
   isSearching: boolean;
-  
+  isLoading: boolean;
+
   // Discovery feeds
   trendingPoems: Poem[];
   recentPoems: Poem[];
   featuredCollections: any[];
-  
+
   // UI state
-  searchView: 'grid' | 'list' | 'minimal';
+  searchView: "grid" | "list" | "minimal";
   selectedPoem: Poem | null;
-  
+
   // Actions
   setSearchFilters: (filters: Partial<SearchFilters>) => void;
   performSearch: (filters?: Partial<SearchFilters>) => Promise<void>;
   performSemanticSearch: (query: string) => Promise<SemanticMatch[]>;
   clearSearch: () => void;
+  getPoem: (poemId: string) => void;
   loadTrendingPoems: () => Promise<void>;
   loadRecentPoems: () => Promise<void>;
   loadFeaturedCollections: () => Promise<void>;
   likePoem: (poemId: string) => void;
+  unlikePoem: (poemId: string) => void;
   bookmarkPoem: (poemId: string) => void;
+  unbookmarkPoem: (poemId: string) => void;
+  checkIfBookmarked: (poemId: string) => void;
+  checkIfLiked: (poemId: string) => void;
+  addComment: (poemId: string, content: string) => void;
+  getComments: (poemId: string, page: number, limit: number) => void;
+  incrementViews: (poemId: string) => void;
+  deleteComment: (poemId: string, commentId: string) => void;
 }
+
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+
+const apiClient = axios.create({
+  baseURL: `${API_URL}/api/v1`,
+  withCredentials: true,
+  timeout: 10000,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// helper function to get the auth token.
+const getAccessToken = () => {
+  return useAuthStore.getState().accessToken ?? null;
+};
+
+const setAuthHeader = (token: string | null) => {
+  if (token) {
+    apiClient.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  } else {
+    delete apiClient.defaults.headers.common["Authorization"];
+  }
+};
 
 // Mock data for demonstration
 const mockPoems: Poem[] = [
   {
-    id: 'poem_1',
-    title: 'Digital Solitude',
+    id: "poem_1",
+    title: "Digital Solitude",
     content: `In the quiet hum of machines,
 I find a different kind of silence,
 Not the absence of sound,
@@ -105,11 +142,12 @@ Dancing through fiber optic veins,
 Reaching out to touch other souls
 Who also stare at glowing rectangles
 In the dark.`,
-    excerpt: 'In the quiet hum of machines, I find a different kind of silence...',
+    excerpt:
+      "In the quiet hum of machines, I find a different kind of silence...",
     author: {
-      id: 'user1',
-      username: 'sarah_poet',
-      avatarUrl: '/avatars/sarah.jpg',
+      id: "user1",
+      username: "sarah_poet",
+      avatarUrl: "/avatars/sarah.jpg",
       isVerified: true,
     },
     createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
@@ -118,18 +156,18 @@ In the dark.`,
     comments: 67,
     bookmarks: 89,
     qualityScore: 85,
-    tags: ['technology', 'loneliness', 'connection'],
-    themes: ['technology', 'identity', 'society'],
-    mood: 'contemplative',
+    tags: ["technology", "loneliness", "connection"],
+    themes: ["technology", "identity", "society"],
+    mood: "contemplative",
     isCollaborative: false,
     isAnonymous: false,
-    nftTokenId: 'nft_abc123',
-    licenseType: 'all-rights-reserved',
+    nftTokenId: "nft_abc123",
+    licenseType: "all-rights-reserved",
     readingTime: 2,
   },
   {
-    id: 'poem_2',
-    title: 'Urban Echoes',
+    id: "poem_2",
+    title: "Urban Echoes",
     content: `Concrete canyons whisper secrets,
 Neon lights paint stories on wet pavement,
 A million footsteps echo through time,
@@ -139,11 +177,11 @@ The city breathes in rhythm,
 A heartbeat of steel and dreams,
 We are all just temporary residents
 In this eternal urban stream.`,
-    excerpt: 'Concrete canyons whisper secrets, Neon lights paint stories...',
+    excerpt: "Concrete canyons whisper secrets, Neon lights paint stories...",
     author: {
-      id: 'user2',
-      username: 'alex_verse',
-      avatarUrl: '/avatars/alex.jpg',
+      id: "user2",
+      username: "alex_verse",
+      avatarUrl: "/avatars/alex.jpg",
       isVerified: false,
     },
     createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
@@ -152,18 +190,18 @@ In this eternal urban stream.`,
     comments: 34,
     bookmarks: 45,
     qualityScore: 78,
-    tags: ['urban', 'city', 'modern'],
-    themes: ['place', 'society', 'time'],
-    mood: 'melancholic',
+    tags: ["urban", "city", "modern"],
+    themes: ["place", "society", "time"],
+    mood: "melancholic",
     isCollaborative: true,
     isAnonymous: false,
-    nftTokenId: 'nft_def456',
-    licenseType: 'cc-by',
+    nftTokenId: "nft_def456",
+    licenseType: "cc-by",
     readingTime: 1,
   },
   {
-    id: 'poem_3',
-    title: 'The Emperor Has No Bytes',
+    id: "poem_3",
+    title: "The Emperor Has No Bytes",
     content: `Behind seven proxies and encrypted streams,
 I pour my truth into digital dreams,
 No name, no face, just words that burn,
@@ -173,11 +211,11 @@ The blockchain bears my silent mark,
 A revolution sparked in dark,
 Ownership proved but identity veiled,
 In zero-knowledge, my truth is hailed.`,
-    excerpt: 'Behind seven proxies and encrypted streams, I pour my truth...',
+    excerpt: "Behind seven proxies and encrypted streams, I pour my truth...",
     author: {
-      id: 'anonymous_1',
-      username: 'Anonymous',
-      avatarUrl: '/avatars/anonymous.png',
+      id: "anonymous_1",
+      username: "Anonymous",
+      avatarUrl: "/avatars/anonymous.png",
       isVerified: false,
     },
     createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
@@ -186,18 +224,18 @@ In zero-knowledge, my truth is hailed.`,
     comments: 156,
     bookmarks: 234,
     qualityScore: 92,
-    tags: ['politics', 'anonymous', 'revolution'],
-    themes: ['social-justice', 'technology', 'freedom'],
-    mood: 'defiant',
+    tags: ["politics", "anonymous", "revolution"],
+    themes: ["social-justice", "technology", "freedom"],
+    mood: "defiant",
     isCollaborative: false,
     isAnonymous: true,
-    nftTokenId: 'nft_zk_789',
-    licenseType: 'cc-by-sa',
+    nftTokenId: "nft_zk_789",
+    licenseType: "cc-by-sa",
     readingTime: 1,
   },
   {
-    id: 'poem_4',
-    title: 'Neon Dreams',
+    id: "poem_4",
+    title: "Neon Dreams",
     content: `In circuits deep where neon bleeds,
 We plant our digital seeds,
 A symphony of light and code,
@@ -207,11 +245,12 @@ The future hums in binary,
 A world both near and visionary,
 Where flesh and silicon combine,
 To redefine the human design.`,
-    excerpt: 'In circuits deep where neon bleeds, We plant our digital seeds...',
+    excerpt:
+      "In circuits deep where neon bleeds, We plant our digital seeds...",
     author: {
-      id: 'user3',
-      username: 'maya_words',
-      avatarUrl: '/avatars/maya.jpg',
+      id: "user3",
+      username: "maya_words",
+      avatarUrl: "/avatars/maya.jpg",
       isVerified: true,
     },
     createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
@@ -220,318 +259,605 @@ To redefine the human design.`,
     comments: 45,
     bookmarks: 67,
     qualityScore: 88,
-    tags: ['cyberpunk', 'future', 'technology'],
-    themes: ['technology', 'future', 'identity'],
-    mood: 'hopeful',
+    tags: ["cyberpunk", "future", "technology"],
+    themes: ["technology", "future", "identity"],
+    mood: "hopeful",
     isCollaborative: true,
     isAnonymous: false,
-    nftTokenId: 'nft_ghi012',
-    licenseType: 'all-rights-reserved',
+    nftTokenId: "nft_ghi012",
+    licenseType: "all-rights-reserved",
     readingTime: 1,
-  }
+  },
 ];
 
-const availableTags = ['technology', 'love', 'nature', 'urban', 'political', 'emotional', 'experimental', 'traditional', 'modern', 'classic'];
-const availableThemes = ['love', 'loss', 'nature', 'identity', 'social-justice', 'technology', 'existential', 'joy', 'memory', 'place'];
-const availableMoods = ['melancholic', 'hopeful', 'angry', 'peaceful', 'anxious', 'joyful', 'contemplative', 'defiant'];
+const availableTags = [
+  "technology",
+  "love",
+  "nature",
+  "urban",
+  "political",
+  "emotional",
+  "experimental",
+  "traditional",
+  "modern",
+  "classic",
+];
+const availableThemes = [
+  "love",
+  "loss",
+  "nature",
+  "identity",
+  "social-justice",
+  "technology",
+  "existential",
+  "joy",
+  "memory",
+  "place",
+];
+const availableMoods = [
+  "melancholic",
+  "hopeful",
+  "angry",
+  "peaceful",
+  "anxious",
+  "joyful",
+  "contemplative",
+  "defiant",
+];
 
 export const useDiscoveryStore = create<DiscoveryState>()(
-  devtools((set, get) => ({
-    // Initial State
-    searchFilters: {
-      query: '',
-      semanticQuery: '',
-      tags: [],
-      themes: [],
-      moods: [],
-      minQualityScore: 0,
-      maxQualityScore: 100,
-      isCollaborative: null,
-      hasNFT: null,
-      licenseTypes: [],
-      dateRange: {
-        start: null,
-        end: null,
+  devtools(
+    (set, get) => ({
+      // Initial State
+      searchFilters: {
+        query: "",
+        semanticQuery: "",
+        tags: [],
+        themes: [],
+        moods: [],
+        minQualityScore: 0,
+        maxQualityScore: 100,
+        isCollaborative: null,
+        hasNFT: null,
+        licenseTypes: [],
+        dateRange: {
+          start: null,
+          end: null,
+        },
+        sortBy: "recent",
       },
-      sortBy: 'recent',
-    },
-    searchResults: null,
-    isSearching: false,
-    trendingPoems: [],
-    recentPoems: [],
-    featuredCollections: [],
-    searchView: 'grid',
-    selectedPoem: null,
+      searchResults: null,
+      isLoading: false,
+      isSearching: false,
+      trendingPoems: [],
+      recentPoems: [],
+      featuredCollections: [],
+      searchView: "grid",
+      selectedPoem: null,
 
-    // Set search filters
-    setSearchFilters: (filters) => {
-      set((state) => ({
-        searchFilters: { ...state.searchFilters, ...filters }
-      }));
-    },
-
-    // Perform search
-    performSearch: async (filters?: Partial<SearchFilters>) => {
-      set({ isSearching: true });
-
-      // Update filters if provided
-      if (filters) {
+      // Set search filters
+      setSearchFilters: (filters) => {
         set((state) => ({
-          searchFilters: { ...state.searchFilters, ...filters }
+          searchFilters: { ...state.searchFilters, ...filters },
         }));
-      }
+      },
 
-      const { searchFilters } = get();
+      // Perform search
+      // Perform search - Updated to handle response object
+      performSearch: async (filters?: Partial<SearchFilters>) => {
+        set({ isSearching: true });
 
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Filter poems based on search criteria
-      let filteredPoems = [...mockPoems];
-
-      // Text search
-      if (searchFilters.query) {
-        const query = searchFilters.query.toLowerCase();
-        filteredPoems = filteredPoems.filter(poem =>
-          poem.title.toLowerCase().includes(query) ||
-          poem.content.toLowerCase().includes(query) ||
-          poem.tags.some(tag => tag.toLowerCase().includes(query)) ||
-          poem.author.username.toLowerCase().includes(query)
-        );
-      }
-
-      // Tag filter
-      if (searchFilters.tags.length > 0) {
-        filteredPoems = filteredPoems.filter(poem =>
-          searchFilters.tags.some(tag => poem.tags.includes(tag))
-        );
-      }
-
-      // Theme filter
-      if (searchFilters.themes.length > 0) {
-        filteredPoems = filteredPoems.filter(poem =>
-          searchFilters.themes.some(theme => poem.themes.includes(theme))
-        );
-      }
-
-      // Mood filter
-      if (searchFilters.moods.length > 0) {
-        filteredPoems = filteredPoems.filter(poem =>
-          searchFilters.moods.includes(poem.mood)
-        );
-      }
-
-      // Quality score filter
-      filteredPoems = filteredPoems.filter(poem =>
-        poem.qualityScore >= searchFilters.minQualityScore &&
-        poem.qualityScore <= searchFilters.maxQualityScore
-      );
-
-      // Collaborative filter
-      if (searchFilters.isCollaborative !== null) {
-        filteredPoems = filteredPoems.filter(poem =>
-          poem.isCollaborative === searchFilters.isCollaborative
-        );
-      }
-
-      // NFT filter
-      if (searchFilters.hasNFT !== null) {
-        filteredPoems = filteredPoems.filter(poem =>
-          searchFilters.hasNFT ? poem.nftTokenId !== null : poem.nftTokenId === null
-        );
-      }
-
-      // License filter
-      if (searchFilters.licenseTypes.length > 0) {
-        filteredPoems = filteredPoems.filter(poem =>
-          searchFilters.licenseTypes.includes(poem.licenseType)
-        );
-      }
-
-      // Date range filter
-      if (searchFilters.dateRange.start) {
-        filteredPoems = filteredPoems.filter(poem =>
-          poem.createdAt >= searchFilters.dateRange.start!
-        );
-      }
-      if (searchFilters.dateRange.end) {
-        filteredPoems = filteredPoems.filter(poem =>
-          poem.createdAt <= searchFilters.dateRange.end!
-        );
-      }
-
-      // Sort results
-      filteredPoems.sort((a, b) => {
-        switch (searchFilters.sortBy) {
-          case 'recent':
-            return b.createdAt.getTime() - a.createdAt.getTime();
-          case 'popular':
-            return (b.views + b.likes * 10 + b.comments * 5) - (a.views + a.likes * 10 + a.comments * 5);
-          case 'quality':
-            return b.qualityScore - a.qualityScore;
-          case 'trending':
-            const aTrending = (a.views * 0.1) + (a.likes * 0.3) + (a.comments * 0.2) + (a.qualityScore * 0.4);
-            const bTrending = (b.views * 0.1) + (b.likes * 0.3) + (b.comments * 0.2) + (b.qualityScore * 0.4);
-            return bTrending - aTrending;
-          default:
-            return b.createdAt.getTime() - a.createdAt.getTime();
+        if (filters) {
+          set((state) => ({
+            searchFilters: { ...state.searchFilters, ...filters },
+          }));
         }
-      });
 
-      const searchResults: SearchResults = {
-        poems: filteredPoems.slice(0, 20), // First page
-        total: filteredPoems.length,
-        page: 1,
-        pageSize: 20,
-        hasMore: filteredPoems.length > 20,
-      };
+        const { searchFilters } = get();
 
-      set({
-        searchResults,
-        isSearching: false,
-      });
-    },
+        try {
+          setAuthHeader(getAccessToken());
 
-    // Perform semantic search
-    performSemanticSearch: async (query: string): Promise<SemanticMatch[]> => {
-      // Simulate AI-powered semantic search
-      await new Promise(resolve => setTimeout(resolve, 800));
+          const response = await apiClient.get("/poems/search", {
+            params: {
+              query: searchFilters.query,
+              tags: searchFilters.tags.join(","),
+              themes: searchFilters.themes.join(","),
+              moods: searchFilters.moods.join(","),
+              minQualityScore: searchFilters.minQualityScore,
+              maxQualityScore: searchFilters.maxQualityScore,
+              isCollaborative: searchFilters.isCollaborative,
+              hasNFT: searchFilters.hasNFT,
+              licenseTypes: searchFilters.licenseTypes.join(","),
+              sortBy: searchFilters.sortBy,
+              page: 1,
+              limit: 20,
+            },
+          });
 
-      const semanticMatches: SemanticMatch[] = mockPoems
-        .map(poem => ({
-          poemId: poem.id,
-          poem,
-          similarityScore: Math.random() * 0.5 + 0.5, // 0.5-1.0
-          matchedThemes: poem.themes.slice(0, 2),
-        }))
-        .sort((a, b) => b.similarityScore - a.similarityScore)
-        .slice(0, 5);
+          // Extract poems array and pagination data
+          const poems = response.data.items || response.data.poems || [];
+          const total = response.data.total || poems.length;
 
-      return semanticMatches;
-    },
+          const searchResults: SearchResults = {
+            poems: Array.isArray(poems) ? poems : [],
+            total,
+            page: response.data.page || 1,
+            pageSize: response.data.limit || response.data.pageSize || 20,
+            hasMore: response.data.hasNext || response.data.hasMore || false,
+          };
 
-    // Clear search
-    clearSearch: () => {
-      set({
-        searchFilters: {
-          query: '',
-          semanticQuery: '',
-          tags: [],
-          themes: [],
-          moods: [],
-          minQualityScore: 0,
-          maxQualityScore: 100,
-          isCollaborative: null,
-          hasNFT: null,
-          licenseTypes: [],
-          dateRange: {
-            start: null,
-            end: null,
+          set({
+            searchResults,
+            isSearching: false,
+          });
+        } catch (error) {
+          console.error("Search failed:", error);
+          set({ isSearching: false });
+        }
+      },
+
+      // Perform semantic search
+      performSemanticSearch: async (
+        query: string
+      ): Promise<SemanticMatch[]> => {
+        try {
+          setAuthHeader(getAccessToken());
+
+          const response = await apiClient.post("/poems/semantic-search", {
+            query,
+            limit: 5,
+          });
+
+          return response.data.matches || response.data;
+        } catch (error) {
+          console.error("Semantic search failed:", error);
+          return [];
+        }
+      },
+
+      // Clear search
+      clearSearch: () => {
+        set({
+          searchFilters: {
+            query: "",
+            semanticQuery: "",
+            tags: [],
+            themes: [],
+            moods: [],
+            minQualityScore: 0,
+            maxQualityScore: 100,
+            isCollaborative: null,
+            hasNFT: null,
+            licenseTypes: [],
+            dateRange: {
+              start: null,
+              end: null,
+            },
+            sortBy: "recent",
           },
-          sortBy: 'recent',
-        },
-        searchResults: null,
-      });
+          searchResults: null,
+        });
+      },
+
+      getPoem: async (poemId: string) => {
+      try {
+        setAuthHeader(getAccessToken());
+        const response = await apiClient.get(`/poems/${poemId}`);
+        return response.data;
+      } catch (error) {
+        console.error('Failed to get poem:', error);
+        
+        // Fallback to solo poet store
+        const { allPoems } = useSoloPoetStore.getState();
+        return allPoems.find(poem => poem.id === poemId) || null;
+      }
     },
 
-    // Load trending poems
-    loadTrendingPoems: async () => {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Load trending poems - Updated to use real API
+      loadTrendingPoems: async () => {
+        try {
+          setAuthHeader(getAccessToken());
 
-      const trending = [...mockPoems]
-        .sort((a, b) => {
-          const aScore = (a.views * 0.2) + (a.likes * 0.4) + (a.comments * 0.2) + (a.qualityScore * 0.2);
-          const bScore = (b.views * 0.2) + (b.likes * 0.4) + (b.comments * 0.2) + (b.qualityScore * 0.2);
-          return bScore - aScore;
-        })
-        .slice(0, 6);
+          const response = await apiClient.get("/poems/trending", {
+            params: { limit: 6 },
+          });
 
-      set({ trendingPoems: trending });
-    },
+          const poems =
+            response.data.items || response.data.poems || response.data;
 
-    // Load recent poems
-    loadRecentPoems: async () => {
-      await new Promise(resolve => setTimeout(resolve, 500));
+          const trendingPoems = Array.isArray(poems) ? poems : [];
+          set({ trendingPoems });
+        } catch (error) {
+          console.error("Failed to load trending poems:", error);
+          // Fallback to solo poet store
+          const { allPoems } = useSoloPoetStore.getState();
+          const trending = [...allPoems]
+            .sort((a, b) => (b.likes || 0) - (a.likes || 0))
+            .slice(0, 6);
+          set({ trendingPoems: trending });
+        }
+      },
 
-      const recent = [...mockPoems]
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-        .slice(0, 8);
+      // Load recent poems - Updated to use real API
+      loadRecentPoems: async () => {
+        try {
+          setAuthHeader(getAccessToken());
 
-      set({ recentPoems: recent });
-    },
+          const response = await apiClient.get("/poems/recent", {
+            params: { limit: 8 },
+          });
 
-    // Load featured collections
-    loadFeaturedCollections: async () => {
-      await new Promise(resolve => setTimeout(resolve, 700));
+          // Extract poems array from response
+          const poems =
+            response.data.items || response.data.poems || response.data;
 
-      const featuredCollections = [
-        {
-          id: 'collection_1',
-          title: 'Cyberpunk Dreams',
-          description: 'Poems exploring technology and humanity',
-          curator: 'tech_curator',
-          poemCount: 24,
-          coverImage: '/collections/cyberpunk.jpg',
-        },
-        {
-          id: 'collection_2',
-          title: 'Urban Echoes',
-          description: 'City life and modern experiences',
-          curator: 'city_poet',
-          poemCount: 18,
-          coverImage: '/collections/urban.jpg',
-        },
-        {
-          id: 'collection_3',
-          title: 'Anonymous Voices',
-          description: 'Powerful poems from hidden authors',
-          curator: 'shadow_curator',
-          poemCount: 15,
-          coverImage: '/collections/anonymous.jpg',
-        },
-      ];
+          // Ensure it's an array
+          const recentPoems = Array.isArray(poems) ? poems : [];
 
-      set({ featuredCollections });
-    },
+          set({ recentPoems });
+        } catch (error) {
+          console.error("Failed to load recent poems:", error);
+          // Fallback to solo poet store
+          const { allPoems } = useSoloPoetStore.getState();
+          const recent = [...allPoems]
+            .sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime()
+            )
+            .slice(0, 8);
+          set({ recentPoems: recent });
+        }
+      },
 
-    // Like a poem
-    likePoem: (poemId: string) => {
-      const { searchResults, trendingPoems, recentPoems } = get();
+      // Load featured collections (keep your existing mock implementation for now)
+      loadFeaturedCollections: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 700));
 
-      const updatePoemInArray = (poems: Poem[]) =>
-        poems.map(poem =>
-          poem.id === poemId ? { ...poem, likes: poem.likes + 1 } : poem
-        );
+        const featuredCollections = [
+          {
+            id: "collection_1",
+            title: "Cyberpunk Dreams",
+            description: "Poems exploring technology and humanity",
+            curator: "tech_curator",
+            poemCount: 24,
+            coverImage: "/collections/cyberpunk.jpg",
+          },
+          {
+            id: "collection_2",
+            title: "Urban Echoes",
+            description: "City life and modern experiences",
+            curator: "city_poet",
+            poemCount: 18,
+            coverImage: "/collections/urban.jpg",
+          },
+          {
+            id: "collection_3",
+            title: "Anonymous Voices",
+            description: "Powerful poems from hidden authors",
+            curator: "shadow_curator",
+            poemCount: 15,
+            coverImage: "/collections/anonymous.jpg",
+          },
+        ];
 
-      set({
-        searchResults: searchResults ? {
-          ...searchResults,
-          poems: updatePoemInArray(searchResults.poems),
-        } : null,
-        trendingPoems: updatePoemInArray(trendingPoems),
-        recentPoems: updatePoemInArray(recentPoems),
-      });
-    },
+        set({ featuredCollections });
+      },
 
-    // Bookmark a poem
-    bookmarkPoem: (poemId: string) => {
-      const { searchResults, trendingPoems, recentPoems } = get();
+      // Like a poem - Updated to use real API
+      likePoem: async (poemId: string) => {
+        const { user } = useAuthStore.getState();
+        if (!user) {
+          // Redirect to login or show auth modal
+          console.log("User not authenticated");
+          return;
+        }
 
-      const updatePoemInArray = (poems: Poem[]) =>
-        poems.map(poem =>
-          poem.id === poemId ? { ...poem, bookmarks: poem.bookmarks + 1 } : poem
-        );
+        try {
+          setAuthHeader(getAccessToken());
+          await apiClient.post(`/poems/${poemId}/likes`);
 
-      set({
-        searchResults: searchResults ? {
-          ...searchResults,
-          poems: updatePoemInArray(searchResults.poems),
-        } : null,
-        trendingPoems: updatePoemInArray(trendingPoems),
-        recentPoems: updatePoemInArray(recentPoems),
-      });
-    },
-  }), {
-    name: 'discovery-store',
-  })
+          // Update local state optimistically
+          const { searchResults, trendingPoems, recentPoems } = get();
+
+          const updatePoemInArray = (poems: Poem[]) =>
+            poems.map((poem) =>
+              poem.id === poemId
+                ? { ...poem, likes: (poem.likes || 0) + 1 }
+                : poem
+            );
+
+          set({
+            searchResults: searchResults
+              ? {
+                  ...searchResults,
+                  poems: updatePoemInArray(searchResults.poems),
+                }
+              : null,
+            trendingPoems: updatePoemInArray(trendingPoems),
+            recentPoems: updatePoemInArray(recentPoems),
+          });
+
+          console.log("Poem liked successfully");
+        } catch (error) {
+          console.error("Failed to like poem:", error);
+        }
+      },
+
+      // Unlike a poem - New method
+      unlikePoem: async (poemId: string) => {
+        const { user } = useAuthStore.getState();
+        if (!user) return;
+
+        try {
+          setAuthHeader(getAccessToken());
+          await apiClient.delete(`/poems/${poemId}/likes`);
+
+          // Update local state optimistically
+          const { searchResults, trendingPoems, recentPoems } = get();
+
+          const updatePoemInArray = (poems: Poem[]) =>
+            poems.map((poem) =>
+              poem.id === poemId
+                ? { ...poem, likes: Math.max(0, (poem.likes || 0) - 1) }
+                : poem
+            );
+
+          set({
+            searchResults: searchResults
+              ? {
+                  ...searchResults,
+                  poems: updatePoemInArray(searchResults.poems),
+                }
+              : null,
+            trendingPoems: updatePoemInArray(trendingPoems),
+            recentPoems: updatePoemInArray(recentPoems),
+          });
+
+          console.log("Poem unliked successfully");
+        } catch (error) {
+          console.error("Failed to unlike poem:", error);
+        }
+      },
+
+      // Bookmark a poem - Updated to use real API
+      bookmarkPoem: async (poemId: string) => {
+        const { user } = useAuthStore.getState();
+        if (!user) {
+          console.log("User not authenticated");
+          return;
+        }
+
+        try {
+          setAuthHeader(getAccessToken());
+          await apiClient.post(`/poems/${poemId}/bookmarks`);
+
+          // Update local state optimistically
+          const { searchResults, trendingPoems, recentPoems } = get();
+
+          const updatePoemInArray = (poems: Poem[]) =>
+            poems.map((poem) =>
+              poem.id === poemId
+                ? { ...poem, bookmarks: (poem.bookmarks || 0) + 1 }
+                : poem
+            );
+
+          set({
+            searchResults: searchResults
+              ? {
+                  ...searchResults,
+                  poems: updatePoemInArray(searchResults.poems),
+                }
+              : null,
+            trendingPoems: updatePoemInArray(trendingPoems),
+            recentPoems: updatePoemInArray(recentPoems),
+          });
+
+          console.log("Poem bookmarked successfully");
+        } catch (error) {
+          console.error("Failed to bookmark poem:", error);
+        }
+      },
+
+      // Unbookmark a poem - New method
+      unbookmarkPoem: async (poemId: string) => {
+        const { user } = useAuthStore.getState();
+        if (!user) return;
+
+        try {
+          setAuthHeader(getAccessToken());
+          await apiClient.delete(`/poems/${poemId}/bookmarks`);
+
+          // Update local state optimistically
+          const { searchResults, trendingPoems, recentPoems } = get();
+
+          const updatePoemInArray = (poems: Poem[]) =>
+            poems.map((poem) =>
+              poem.id === poemId
+                ? { ...poem, bookmarks: Math.max(0, (poem.bookmarks || 0) - 1) }
+                : poem
+            );
+
+          set({
+            searchResults: searchResults
+              ? {
+                  ...searchResults,
+                  poems: updatePoemInArray(searchResults.poems),
+                }
+              : null,
+            trendingPoems: updatePoemInArray(trendingPoems),
+            recentPoems: updatePoemInArray(recentPoems),
+          });
+
+          console.log("Poem unbookmarked successfully");
+        } catch (error) {
+          console.error("Failed to unbookmark poem:", error);
+        }
+      },
+
+      // Check if user has liked a poem - New method
+      checkIfLiked: async (poemId: string): Promise<boolean> => {
+        const { user } = useAuthStore.getState();
+        if (!user) return false;
+
+        try {
+          setAuthHeader(getAccessToken());
+          const response = await apiClient.get(`/poems/${poemId}/likes/check`);
+          return response.data.hasLiked || false;
+        } catch (error) {
+          console.error("Failed to check like status:", error);
+          return false;
+        }
+      },
+
+      // Check if user has bookmarked a poem - New method
+      checkIfBookmarked: async (poemId: string): Promise<boolean> => {
+        const { user } = useAuthStore.getState();
+        if (!user) return false;
+
+        try {
+          setAuthHeader(getAccessToken());
+          const response = await apiClient.get(
+            `/poems/${poemId}/bookmarks/check`
+          );
+          return response.data.hasBookmarked || false;
+        } catch (error) {
+          console.error("Failed to check bookmark status:", error);
+          return false;
+        }
+      },
+
+      // Add comment to poem - New method
+      addComment: async (poemId: string, content: string) => {
+        const { user } = useAuthStore.getState();
+        if (!user) {
+          console.log("User not authenticated");
+          return null;
+        }
+
+        try {
+          setAuthHeader(getAccessToken());
+          const response = await apiClient.post(`/poems/${poemId}/comments`, {
+            content,
+          });
+
+          // Update local state optimistically
+          const { searchResults, trendingPoems, recentPoems } = get();
+
+          const updatePoemInArray = (poems: Poem[]) =>
+            poems.map((poem) =>
+              poem.id === poemId
+                ? { ...poem, comments: (poem.comments || 0) + 1 }
+                : poem
+            );
+
+          set({
+            searchResults: searchResults
+              ? {
+                  ...searchResults,
+                  poems: updatePoemInArray(searchResults.poems),
+                }
+              : null,
+            trendingPoems: updatePoemInArray(trendingPoems),
+            recentPoems: updatePoemInArray(recentPoems),
+          });
+
+          console.log("Comment added successfully", response.data);
+          return response.data;
+        } catch (error) {
+          console.error("Failed to add comment:", error);
+          return null;
+        }
+      },
+
+      // Get comments for poem
+      getComments: async (
+        poemId: string,
+        page: number = 1,
+        limit: number = 20
+      ) => {
+        try {
+          setAuthHeader(getAccessToken());
+          const response = await apiClient.get(`/poems/${poemId}/comments`, {
+            params: { page, limit },
+          });
+          return response.data;
+        } catch (error) {
+          console.error("Failed to get comments:", error);
+          return { items: [], total: 0, page: 1, hasMore: false };
+        }
+      },
+
+      // Delete comment
+      deleteComment: async (commentId: string, poemId: string) => {
+        const { user } = useAuthStore.getState();
+        if (!user) return;
+
+        try {
+          setAuthHeader(getAccessToken());
+          await apiClient.delete(`/poems/${poemId}/comments/${commentId}`);
+
+          // Update local state optimistically
+          const { searchResults, trendingPoems, recentPoems } = get();
+
+          const updatePoemInArray = (poems: Poem[]) =>
+            poems.map((poem) =>
+              poem.id === poemId
+                ? { ...poem, comments: Math.max(0, (poem.comments || 0) - 1) }
+                : poem
+            );
+
+          set({
+            searchResults: searchResults
+              ? {
+                  ...searchResults,
+                  poems: updatePoemInArray(searchResults.poems),
+                }
+              : null,
+            trendingPoems: updatePoemInArray(trendingPoems),
+            recentPoems: updatePoemInArray(recentPoems),
+          });
+
+          console.log("Comment deleted successfully");
+        } catch (error) {
+          console.error("Failed to delete comment:", error);
+        }
+      },
+
+      // Increment poem views - New method
+      incrementViews: async (poemId: string) => {
+        try {
+          setAuthHeader(getAccessToken());
+          await apiClient.post(`/poems/${poemId}/views`);
+
+          // Update local state optimistically
+          const { searchResults, trendingPoems, recentPoems } = get();
+
+          const updatePoemInArray = (poems: Poem[]) =>
+            poems.map((poem) =>
+              poem.id === poemId
+                ? { ...poem, views: (poem.views || 0) + 1 }
+                : poem
+            );
+
+          set({
+            searchResults: searchResults
+              ? {
+                  ...searchResults,
+                  poems: updatePoemInArray(searchResults.poems),
+                }
+              : null,
+            trendingPoems: updatePoemInArray(trendingPoems),
+            recentPoems: updatePoemInArray(recentPoems),
+          });
+        } catch (error) {
+          console.error("Failed to increment views:", error);
+        }
+      },
+    }),
+    {
+      name: "discovery-store",
+    }
+  )
 );

@@ -1,14 +1,16 @@
-import { IsString, MinLength, MaxLength, IsOptional, IsUUID } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+// modules/comments/dto/create-comment.dto.ts
+import { IsString, IsOptional, IsUUID } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateCommentDto {
-  @ApiProperty({ example: 'Beautiful imagery in this poem!' })
+  @ApiProperty({ description: 'Comment content' })
   @IsString()
-  @MinLength(1)
-  @MaxLength(1000)
   content: string;
 
-  @ApiPropertyOptional({ description: 'Parent comment ID for replies' })
+  @ApiProperty({ 
+    description: 'Parent comment ID for replies',
+    required: false 
+  })
   @IsOptional()
   @IsUUID()
   parentCommentId?: string;

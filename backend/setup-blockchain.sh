@@ -40,7 +40,7 @@ npx hardhat run scripts/deploy.ts --network localhost
 
 # Copy environment variables to backend
 print_info "Setting up backend environment..."
-cp deployed/.contracts.env ../../backend/.contracts.env
+# cp deployed/.contracts.env ../../backend/.contracts.env
 
 print_success "Blockchain setup complete!"
 echo ""

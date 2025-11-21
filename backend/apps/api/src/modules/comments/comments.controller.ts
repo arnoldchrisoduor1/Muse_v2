@@ -1,3 +1,4 @@
+// modules/comments/comments.controller.ts
 import {
   Controller,
   Get,
@@ -27,6 +28,7 @@ export class CommentsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a comment on a poem' })
   @ApiResponse({ status: 201, description: 'Comment created successfully' })
+  @ApiResponse({ status: 404, description: 'Poem or parent comment not found' })
   async create(
     @Param('poemId') poemId: string,
     @CurrentUser() user: any,
@@ -47,10 +49,33 @@ export class CommentsController {
     return this.commentsService.findByPoem(poemId, page, limit);
   }
 
+  @Public()
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a specific comment with context' })
+  @ApiResponse({ status: 200, description: 'Comment retrieved' })
+  @ApiResponse({ status: 404, description: 'Comment not found' })
+  async findOne(@Param('id') id: string) {
+    return this.commentsService.findOne(id);
+  }
+
+  @Public()
+  @Get(':id/replies')
+  @ApiOperation({ summary: 'Get replies for a comment' })
+  @ApiResponse({ status: 200, description: 'Replies retrieved' })
+  @ApiResponse({ status: 404, description: 'Comment not found' })
+  async getReplies(
+    @Param('id') id: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.commentsService.getReplies(id, page, limit);
+  }
+
   @Patch(':id')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a comment' })
   @ApiResponse({ status: 200, description: 'Comment updated successfully' })
+  @ApiResponse({ status: 403, description: 'Not authorized to update this comment' })
   async update(
     @Param('id') id: string,
     @CurrentUser() user: any,
@@ -61,8 +86,9 @@ export class CommentsController {
 
   @Delete(':id')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete a comment' })
+  @ApiOperation({ summary: 'Delete a comment and its replies' })
   @ApiResponse({ status: 200, description: 'Comment deleted successfully' })
+  @ApiResponse({ status: 403, description: 'Not authorized to delete this comment' })
   async remove(
     @Param('id') id: string,
     @CurrentUser() user: any,

@@ -1,10 +1,5 @@
-import { IsString, MinLength, MaxLength } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+// modules/comments/dto/update-comment.dto.ts
+import { PartialType } from '@nestjs/swagger';
+import { CreateCommentDto } from './create-comment.dto';
 
-export class UpdateCommentDto {
-  @ApiProperty()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(1000)
-  content: string;
-}
+export class UpdateCommentDto extends PartialType(CreateCommentDto) {}

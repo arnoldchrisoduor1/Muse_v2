@@ -200,4 +200,14 @@ export class PoemsController {
   ) {
     return this.poemsService.remove(id, user.id);
   }
+
+  @Post(':id/views')
+@HttpCode(HttpStatus.OK)
+@ApiOperation({ summary: 'Increment poem views' })
+@ApiResponse({ status: 200, description: 'Views incremented' })
+@ApiResponse({ status: 404, description: 'Poem not found' })
+async incrementViews(@Param('id') id: string) {
+  await this.poemsService.incrementViews(id);
+  return { message: 'Views incremented successfully' };
+}
 }

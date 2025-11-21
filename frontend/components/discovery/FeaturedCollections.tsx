@@ -1,17 +1,34 @@
+// components/discovery/FeaturedCollections.tsx
 "use client";
 import { motion } from 'framer-motion';
 import { Library, Users, ArrowRight } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { useRouter } from 'next/navigation';
 
 interface FeaturedCollectionsProps {
   collections: any[];
+  onViewAll?: () => void;
 }
 
-export function FeaturedCollections({ collections }: FeaturedCollectionsProps) {
+export function FeaturedCollections({ collections, onViewAll }: FeaturedCollectionsProps) {
+  const router = useRouter();
+
   if (collections.length === 0) {
     return null;
   }
+
+  const handleCollectionClick = (collectionId: string) => {
+    router.push(`/collection/${collectionId}`);
+  };
+
+  const handleViewAllClick = () => {
+    if (onViewAll) {
+      onViewAll();
+    } else {
+      router.push('/collections');
+    }
+  };
 
   return (
     <div>
@@ -20,7 +37,7 @@ export function FeaturedCollections({ collections }: FeaturedCollectionsProps) {
           <Library className="text-warning" />
           Featured Collections
         </h2>
-        <Button variant="outline" size="sm" icon={ArrowRight}>
+        <Button variant="outline" size="sm" icon={ArrowRight} onClick={handleViewAllClick}>
           View All
         </Button>
       </div>
@@ -33,7 +50,10 @@ export function FeaturedCollections({ collections }: FeaturedCollectionsProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
           >
-            <Card className="p-6 hover:bg-white/10 transition-all duration-300 cursor-pointer group h-full">
+            <Card 
+              className="p-6 hover:bg-white/10 transition-all duration-300 cursor-pointer group h-full"
+              onClick={() => handleCollectionClick(collection.id)}
+            >
               {/* Collection Image/Icon */}
               <div className="w-12 h-12 bg-gradient-90 from-warning to-accent rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Library size={24} className="text-white" />
@@ -56,9 +76,9 @@ export function FeaturedCollections({ collections }: FeaturedCollectionsProps) {
                   <span>{collection.poemCount} poems</span>
                 </div>
                 
-                <Button variant="outline" size="sm">
-                  Explore
-                </Button>
+                <span className="text-warning group-hover:translate-x-1 transition-transform">
+                  Explore →
+                </span>
               </div>
             </Card>
           </motion.div>

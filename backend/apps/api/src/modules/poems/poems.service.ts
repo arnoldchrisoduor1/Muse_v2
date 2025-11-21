@@ -658,18 +658,6 @@ async processPoemMinting(poemId: string, walletAddress: string) {
   }
 
   /**
-   * Increment view count
-   */
-  private async incrementViews(id: string): Promise<void> {
-    await this.prisma.poem.update({
-      where: { id },
-      data: {
-        views: { increment: 1 },
-      },
-    });
-  }
-
-  /**
    * Generate excerpt from content
    */
   private generateExcerpt(content: string): string {
@@ -750,4 +738,123 @@ async processPoemMinting(poemId: string, walletAddress: string) {
         return { publishedAt: 'desc' };
     }
   }
+
+  /**
+ * Get trending poems
+ */
+async getTrendingPoems(limit: number = 10, page: number = 1) {
+  const skip = (page - 1) * limit;
+
+  const [poems, total] = await Promise.all([
+    this.prisma.poem.findMany({
+      where: {
+        status: PoemStatus.PUBLISHED,
+      },
+      skip,
+      take: limit,
+      orderBy: [
+        { likes: 'desc' },
+        { views: 'desc' },
+        { publishedAt: 'desc' },
+      ],
+      include: {
+        author: true,
+        blockchainData: true,
+      },
+    }),
+    this.prisma.poem.count({
+      where: {
+        status: PoemStatus.PUBLISHED,
+      },
+    }),
+  ]);
+
+  this.logger.log("Retrieved trending poems");
+
+  return {
+    items: poems.map(poem => new PoemResponseDto(poem)),
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+    hasNext: page < Math.ceil(total / limit),
+    hasPrevious: page > 1,
+  };
+}
+
+/**
+ * Get recent poems
+ */
+async getRecentPoems(limit: number = 10, page: number = 1) {
+  const skip = (page - 1) * limit;
+
+  const [poems, total] = await Promise.all([
+    this.prisma.poem.findMany({
+      where: {
+        status: PoemStatus.PUBLISHED,
+      },
+      skip,
+      take: limit,
+      orderBy: { publishedAt: 'desc' },
+      include: {
+        author: true,
+        blockchainData: true,
+      },
+    }),
+    this.prisma.poem.count({
+      where: {
+        status: PoemStatus.PUBLISHED,
+      },
+    }),
+  ]);
+
+  this.logger.log("Retrieved recent poems");
+
+  return {
+    items: poems.map(poem => new PoemResponseDto(poem)),
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+    hasNext: page < Math.ceil(total / limit),
+    hasPrevious: page > 1,
+  };
+}
+
+/**
+ * Search poems with advanced filters
+ */
+async searchPoems(searchDto: SearchPoemsDto) {
+  this.logger.log("Doing a poem serach");
+  return this.findAll(searchDto);
+}
+
+/**
+ * Make incrementViews public
+ */
+// modules/poems/poems.service.ts
+
+/**
+ * Increment poem views (make it public)
+ */
+async incrementViews(id: string): Promise<void> {
+  // First check if poem exists
+  const poem = await this.prisma.poem.findUnique({
+    where: { id },
+  });
+
+  if (!poem) {
+    throw new NotFoundException(`Poem with ID ${id} not found`);
+  }
+
+  // Increment views
+  await this.prisma.poem.update({
+    where: { id },
+    data: {
+      views: { increment: 1 },
+    },
+  });
+  
+  this.logger.log(`Views incremented for poem ${id}`);
+}
 }

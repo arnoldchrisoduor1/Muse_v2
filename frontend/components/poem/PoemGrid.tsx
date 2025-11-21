@@ -1,9 +1,10 @@
+// components/poem/PoemGrid.tsx
 "use client";
 import { motion } from 'framer-motion';
-import { Heart, Bookmark, Eye, Users, Shield, Sparkles } from 'lucide-react';
+import { Heart, Bookmark, Eye, Users, Shield, Sparkles, MessageCircle } from 'lucide-react';
 import { useDiscoveryStore } from '@/lib/store/discovery-store';
 import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { useRouter } from 'next/navigation';
 
 interface PoemGridProps {
   poems: any[];
@@ -11,7 +12,11 @@ interface PoemGridProps {
 }
 
 export function PoemGrid({ poems, viewMode = 'grid' }: PoemGridProps) {
-  const { likePoem, bookmarkPoem } = useDiscoveryStore();
+  const router = useRouter();
+
+  const handlePoemClick = (poemId: string) => {
+    router.push(`/poem/${poemId}`);
+  };
 
   if (poems.length === 0) {
     return (
@@ -33,8 +38,7 @@ export function PoemGrid({ poems, viewMode = 'grid' }: PoemGridProps) {
             key={poem.id}
             poem={poem}
             index={index}
-            onLike={likePoem}
-            onBookmark={bookmarkPoem}
+            onClick={() => handlePoemClick(poem.id)}
           />
         ))}
       </div>
@@ -48,19 +52,17 @@ export function PoemGrid({ poems, viewMode = 'grid' }: PoemGridProps) {
           key={poem.id}
           poem={poem}
           index={index}
-          onLike={likePoem}
-          onBookmark={bookmarkPoem}
+          onClick={() => handlePoemClick(poem.id)}
         />
       ))}
     </div>
   );
 }
 
-function PoemCard({ poem, index, onLike, onBookmark }: { 
+function PoemCard({ poem, index, onClick }: { 
   poem: any; 
   index: number;
-  onLike: (id: string) => void;
-  onBookmark: (id: string) => void;
+  onClick: () => void;
 }) {
   const getQualityColor = (score: number) => {
     if (score >= 85) return 'text-accent';
@@ -75,7 +77,10 @@ function PoemCard({ poem, index, onLike, onBookmark }: {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
     >
-      <Card className="p-6 hover:bg-white/10 transition-all duration-300 cursor-pointer group">
+      <Card 
+        className="p-6 hover:bg-white/10 transition-all duration-300 cursor-pointer group"
+        onClick={onClick}
+      >
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0">
@@ -120,18 +125,22 @@ function PoemCard({ poem, index, onLike, onBookmark }: {
 
         {/* Stats */}
         <div className="flex items-center justify-between text-sm text-text-muted">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <div className="flex items-center gap-1">
               <Eye size={14} />
-              <span>{poem.views.toLocaleString()}</span>
+              <span>{poem.views?.toLocaleString() || 0}</span>
             </div>
             <div className="flex items-center gap-1">
               <Heart size={14} />
-              <span>{poem.likes}</span>
+              <span>{poem.likes || 0}</span>
             </div>
             <div className="flex items-center gap-1">
               <Bookmark size={14} />
-              <span>{poem.bookmarks}</span>
+              <span>{poem.bookmarks || 0}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <MessageCircle size={14} />
+              <span>{poem.comments || 0}</span>
             </div>
           </div>
 
@@ -148,38 +157,15 @@ function PoemCard({ poem, index, onLike, onBookmark }: {
             )}
           </div>
         </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2 mt-4 pt-4 border-t border-white/10">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            icon={Heart}
-            onClick={() => onLike(poem.id)}
-          >
-            Like
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            icon={Bookmark}
-            onClick={() => onBookmark(poem.id)}
-          >
-            Save
-          </Button>
-        </div>
       </Card>
     </motion.div>
   );
 }
 
-function PoemListItem({ poem, index, onLike, onBookmark }: { 
+function PoemListItem({ poem, index, onClick }: { 
   poem: any; 
   index: number;
-  onLike: (id: string) => void;
-  onBookmark: (id: string) => void;
+  onClick: () => void;
 }) {
   return (
     <motion.div
@@ -187,7 +173,10 @@ function PoemListItem({ poem, index, onLike, onBookmark }: {
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.05 }}
     >
-      <Card className="p-4 hover:bg-white/10 transition-all duration-300 cursor-pointer group">
+      <Card 
+        className="p-4 hover:bg-white/10 transition-all duration-300 cursor-pointer group"
+        onClick={onClick}
+      >
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-2">
@@ -209,37 +198,22 @@ function PoemListItem({ poem, index, onLike, onBookmark }: {
             <div className="flex items-center gap-4 text-sm text-text-muted">
               <div className="flex items-center gap-1">
                 <Eye size={14} />
-                <span>{poem.views.toLocaleString()}</span>
+                <span>{poem.views?.toLocaleString() || 0}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Heart size={14} />
-                <span>{poem.likes}</span>
+                <span>{poem.likes || 0}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Bookmark size={14} />
-                <span>{poem.bookmarks}</span>
+                <span>{poem.bookmarks || 0}</span>
               </div>
-              <span>{poem.readingTime} min read</span>
+              <div className="flex items-center gap-1">
+                <MessageCircle size={14} />
+                <span>{poem.comments || 0}</span>
+              </div>
+              <span>{poem.readingTime || 1} min read</span>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2 ml-4">
-            <Button
-              variant="outline"
-              size="sm"
-              icon={Heart}
-              onClick={() => onLike(poem.id)}
-            >
-              {poem.likes}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              icon={Bookmark}
-              onClick={() => onBookmark(poem.id)}
-            >
-              Save
-            </Button>
           </div>
         </div>
       </Card>
