@@ -112,6 +112,7 @@ model User {
   following             Follow[]                @relation("Following")
   followers             Follow[]                @relation("Followers")
   notifications         Notification[]
+  commentvote           CommentVote[]
   
   @@index([username])
   @@index([email])
@@ -337,6 +338,12 @@ model Comment {
   parentCommentId       String?
   parentComment         Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id])
   replies               Comment[] @relation("CommentReplies")
+
+  upvotes   Int @default(0)
+  downvotes Int @default(0)
+  netVotes  Int @default(0)
+
+  votes CommentVote[]
   
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
@@ -346,6 +353,26 @@ model Comment {
   @@index([parentCommentId])
   @@index([createdAt])
   @@map("comments")
+}
+
+model CommentVote {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commentId String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  type      VoteType
+  createdAt DateTime @default(now())
+
+  @@unique([userId, commentId])
+  @@index([commentId])
+  @@index([userId])
+  @@map("comment_votes")
+}
+
+enum VoteType {
+  UP
+  DOWN
 }
 
 model Bookmark {

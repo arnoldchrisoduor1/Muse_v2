@@ -97,9 +97,12 @@ interface DiscoveryState {
   checkIfBookmarked: (poemId: string) => void;
   checkIfLiked: (poemId: string) => void;
   addComment: (poemId: string, content: string) => void;
-  getComments: (poemId: string, page: number, limit: number) => void;
-  incrementViews: (poemId: string) => void;
+  getComments: (poemId: string) => void;
   deleteComment: (poemId: string, commentId: string) => void;
+  voteOnComment: (poemId: string, voteType: string) => void;
+  removeCommentVote: (poemId: string) => void;
+  getCommentVote: (commentId: string) => void;
+  incrementViews: (poemId: string) => void;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
@@ -788,6 +791,55 @@ export const useDiscoveryStore = create<DiscoveryState>()(
           return { items: [], total: 0, page: 1, hasMore: false };
         }
       },
+      voteOnComment: async (commentId: string, voteType: 'UP' | 'DOWN') => {
+  const { user } = useAuthStore.getState();
+  if (!user) {
+    console.log('User not authenticated');
+    return null;
+  }
+
+  try {
+    setAuthHeader(getAccessToken());
+    const endpoint = voteType === 'UP' ? 'up' : 'down';
+    const response = await apiClient.post(`/comments/${commentId}/votes/${endpoint}`);
+    
+    console.log(`Comment ${voteType}voted successfully`);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to vote on comment:', error);
+    return null;
+  }
+},
+
+// Remove vote from comment
+removeCommentVote: async (commentId: string) => {
+  const { user } = useAuthStore.getState();
+  if (!user) return;
+
+  try {
+    setAuthHeader(getAccessToken());
+    await apiClient.delete(`/comments/${commentId}/votes`);
+    
+    console.log('Comment vote removed successfully');
+  } catch (error) {
+    console.error('Failed to remove comment vote:', error);
+  }
+},
+
+// Get user's vote on comment
+getCommentVote: async (commentId: string) => {
+  const { user } = useAuthStore.getState();
+  if (!user) return null;
+
+  try {
+    setAuthHeader(getAccessToken());
+    const response = await apiClient.get(`/comments/${commentId}/votes/my-vote`);
+    return response.data.voteType;
+  } catch (error) {
+    console.error('Failed to get comment vote:', error);
+    return null;
+  }
+},
 
       // Delete comment
       deleteComment: async (commentId: string, poemId: string) => {

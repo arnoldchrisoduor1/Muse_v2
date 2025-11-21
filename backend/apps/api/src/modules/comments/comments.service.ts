@@ -57,29 +57,60 @@ export class CommentsService {
           parentCommentId: createCommentDto.parentCommentId,
         },
         include: {
+  user: {
+    select: {
+      id: true,
+      username: true,
+      avatarUrl: true,
+      isCollectiveContributor: true,
+      verificationStatus: true,
+    },
+  },
+  votes: { // Add votes
+    select: {
+      userId: true,
+      type: true,
+    },
+  },
+  replies: {
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          avatarUrl: true,
+          isCollectiveContributor: true,
+          verificationStatus: true,
+        },
+      },
+      votes: { // Add votes to replies too
+        select: {
+          userId: true,
+          type: true,
+        },
+      },
+      replies: {
+        include: {
           user: {
             select: {
               id: true,
               username: true,
               avatarUrl: true,
-              isCollectiveContributor: true,
-              verificationStatus: true,
             },
           },
-          ...(createCommentDto.parentCommentId ? {
-            parentComment: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    username: true,
-                    avatarUrl: true,
-                  },
-                },
-              },
+          votes: { 
+            select: {
+              userId: true,
+              type: true,
             },
-          } : {}),
+          },
         },
+        orderBy: { createdAt: 'asc' },
+      },
+    },
+    orderBy: { createdAt: 'asc' },
+  },
+},
       }),
       this.prisma.poem.update({
         where: { id: poemId },
@@ -191,16 +222,22 @@ export class CommentsService {
         skip,
         take: limit,
         include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-              avatarUrl: true,
-              isCollectiveContributor: true,
-              verificationStatus: true,
-            },
-          },
-        },
+  user: {
+    select: {
+      id: true,
+      username: true,
+      avatarUrl: true,
+      isCollectiveContributor: true,
+      verificationStatus: true,
+    },
+  },
+  votes: { // Add votes
+    select: {
+      userId: true,
+      type: true,
+    },
+  },
+},
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.comment.count({
@@ -329,6 +366,12 @@ export class CommentsService {
             verificationStatus: true,
           },
         },
+        votes: { // Add votes
+    select: {
+      userId: true,
+      type: true,
+    },
+  },
         poem: {
           select: {
             id: true,

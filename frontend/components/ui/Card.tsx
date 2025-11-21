@@ -6,21 +6,23 @@ interface CardProps {
   className?: string;
   glow?: boolean;
   onClick?: () => void;
+  hover?: boolean;
 }
 
 export const Card: React.FC<CardProps> = ({ 
   children, 
   className = '', 
   glow = false,
-  onClick
+  onClick,
+  hover = true
 }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ scale: 1.02 }}
+      whileHover={hover ? { scale: 1.02 } : {}}
       onClick={onClick}
-      className={`glass-card bg-purple-800/30 border-purple-500/30 ${className} ${
+      className={`glass-card ${className} ${
         glow ? 'shadow-lg shadow-primary/20' : ''
       } ${onClick ? 'cursor-pointer' : ''}`} 
     >

@@ -7,11 +7,12 @@ interface ButtonProps
     React.ButtonHTMLAttributes<HTMLButtonElement>,
     'onDrag' | 'onDragStart' | 'onDragEnd' | 'onDrop'
   > {
-  variant?: 'primary' | 'secondary' | 'outline';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   icon?: LucideIcon;
-  children: React.ReactNode;
+  iconPosition?: 'left' | 'right';
+  children?: React.ReactNode;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -19,21 +20,25 @@ export const Button: React.FC<ButtonProps> = ({
   size = 'md',
   loading = false,
   icon: Icon,
+  iconPosition = 'left',
   children,
   className = '',
   disabled,
   ...props
 }) => {
-  const baseClasses = 'inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2';
+  const baseClasses = 'inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50';
+  
   const variants = {
     primary: 'btn-primary',
-    secondary: 'bg-white/20 hover:bg-white/30 text-white border border-white/30',
+    secondary: 'bg-secondary hover:bg-secondary/80 text-white border border-secondary',
     outline: 'bg-transparent hover:bg-white/10 text-white border border-primary',
+    ghost: 'bg-transparent hover:bg-white/5 text-white border-transparent'
   };
+  
   const sizes = {
-    sm: 'px-4 py-2 text-sm',
-    md: 'px-6 py-3 text-base',
-    lg: 'px-8 py-4 text-lg',
+    sm: 'px-3 py-2 text-sm',
+    md: 'px-4 py-2.5 text-base',
+    lg: 'px-6 py-3 text-lg'
   };
 
   return (
@@ -53,8 +58,9 @@ export const Button: React.FC<ButtonProps> = ({
           className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full"
         />
       )}
-      {Icon && !loading && <Icon size={20} className="mr-2" />}
+      {Icon && !loading && iconPosition === 'left' && <Icon size={20} className="mr-2" />}
       {children}
+      {Icon && !loading && iconPosition === 'right' && <Icon size={20} className="ml-2" />}
     </motion.button>
   );
 };
