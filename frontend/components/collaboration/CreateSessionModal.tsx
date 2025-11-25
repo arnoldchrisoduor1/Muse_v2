@@ -20,16 +20,29 @@ export function CreateSessionModal({ onClose }: CreateSessionModalProps) {
   const { createSession, isCreatingSession } = useCollaborationStore();
 
   const handleCreateSession = async () => {
-    if (!title.trim()) return;
+    try {
+      if (!title.trim()) return;
+      console.log("Attempting to create sesion");
+      
+      await createSession(title, description);
+      console.log("session created successfully");
+      onClose();
+    } catch (error) {
+      console.error("could not create session", error);
+      onClose();
+    }
     
-    await createSession(title, description);
-    onClose();
   };
 
   const handleAddInvitee = () => {
-    if (newInvitee.trim() && !invitees.includes(newInvitee)) {
-      setInvitees([...invitees, newInvitee.trim()]);
-      setNewInvitee('');
+    try {
+        if (newInvitee.trim() && !invitees.includes(newInvitee)) {
+        setInvitees([...invitees, newInvitee.trim()]);
+        setNewInvitee('');
+      }
+      console.log("Invites sent successfully");
+    } catch (error) {
+      console.error("Could not send invite", error);
     }
   };
 

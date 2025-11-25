@@ -153,6 +153,18 @@ export class UsersService {
     };
   }
 
+  // modules/users/users.service.ts
+async findByEmailOrUsername(identifier: string) {
+  return this.prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: identifier },
+        { username: identifier },
+      ],
+    },
+  });
+}
+
   /**
    * Find user by ID
    */
@@ -193,6 +205,14 @@ export class UsersService {
     this.logger.log("Finding user by email");
     return this.prisma.user.findUnique({
       where: { email },
+    });
+  }
+
+  // find user by id
+  async findById(id: string) {
+    this.logger.log("Finding user by ID");
+    return this.prisma.user.findUnique({
+      where: {id}
     });
   }
 

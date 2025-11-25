@@ -13,6 +13,7 @@ import { LikesModule } from './modules/likes/likes.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { BookmarksModule } from './modules/bookmarks/bookmarks.module';
 import { BlockchainModule } from './modules/blockchain/blockchain.module';
+import { CollaborationModule } from './modules/collaboration/collaboration.module';
 
 import { AppController } from './app.controller';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
@@ -79,6 +80,7 @@ import configuration from './config/configuration';
     UsersModule,
     AuthModule,
     PoemsModule,
+    CollaborationModule,
     AiModule,
     LikesModule,
     CommentsModule,

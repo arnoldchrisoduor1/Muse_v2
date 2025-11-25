@@ -15,7 +15,7 @@ export default function CollaboratePage() {
     activeSessions, 
     invitedSessions, 
     loadActiveSessions, 
-    loadInvitedSessions 
+    loadInvitedSessions
   } = useCollaborationStore();
 
   useEffect(() => {
@@ -83,7 +83,7 @@ export default function CollaboratePage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12"
+        className="grid grid-cols-2 xl:grid-cols-4 gap-6 mb-12"
       >
         {stats.map((stat, index) => {
           const Icon = stat.icon;
@@ -112,7 +112,7 @@ export default function CollaboratePage() {
         })}
       </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-8">
           {/* Active Sessions */}

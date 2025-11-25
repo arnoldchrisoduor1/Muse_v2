@@ -1,6 +1,36 @@
+// collaboration-store.ts
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
+import axios from "axios";
+import { useAuthStore } from "./auth-store";
 
+// --- API SETUP ---
+const COLLABORATION_API_URL = 
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+
+const collaborationApiClient = axios.create({
+  baseURL: `${COLLABORATION_API_URL}/api/v1/collaboration`,
+  withCredentials: true,
+  timeout: 10000,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Auth setup
+const getAccessToken = () => {
+  return useAuthStore.getState().accessToken ?? null;
+};
+
+const setAuthHeader = (token: string | null) => {
+  if (token) {
+    collaborationApiClient.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  } else {
+    delete collaborationApiClient.defaults.headers.common["Authorization"];
+  }
+};
+
+// --- INTERFACES ---
 interface Collaborator {
   userId: string;
   username: string;
@@ -70,6 +100,35 @@ interface OwnershipProposal {
   expiresAt: Date;
 }
 
+// DTO Interfaces matching backend
+interface CreateSessionDto {
+  title: string;
+  description: string;
+  content?: string;
+}
+
+interface UpdateSessionDto {
+  title?: string;
+  description?: string;
+  status?: string;
+}
+
+interface UpdateContentDto {
+  content: string;
+  changeDescription?: string;
+}
+
+interface InviteCollaboratorDto {
+  inviteeIdentifier: string; // email or username
+}
+
+interface OwnershipProposalDto {
+  splits: {
+    userId: string;
+    percentage: number;
+  }[];
+}
+
 interface CollaborationState {
   // Current session
   currentSession: CollaborationSession | null;
@@ -85,26 +144,60 @@ interface CollaborationState {
   isCreatingSession: boolean;
   isSaving: boolean;
   isPublishing: boolean;
+  isLoading: boolean;
+  error: string | null;
   
   // Actions
   createSession: (title: string, description: string) => Promise<CollaborationSession>;
   joinSession: (sessionId: string) => Promise<void>;
-  leaveSession: (sessionId: string) => void;
-  updateContent: (sessionId: string, content: string, userId: string) => void;
-  inviteCollaborator: (sessionId: string, userId: string, share: number) => void;
-  proposeOwnership: (sessionId: string, splits: { userId: string; percentage: number }[]) => void;
-  approveOwnership: (sessionId: string, proposalId: string, userId: string) => void;
+  leaveSession: (sessionId: string) => Promise<void>;
+  updateContent: (sessionId: string, content: string, userId: string, changeDescription?: string) => Promise<void>;
+  inviteCollaborator: (sessionId: string, inviteeIdentifier: string) => Promise<void>;
+  approveCollaboration: (sessionId: string) => Promise<void>;
+  proposeOwnership: (sessionId: string, splits: { userId: string; percentage: number }[]) => Promise<void>;
+  approveOwnership: (sessionId: string, proposalId: string) => Promise<void>;
   publishCollaborativePoem: (sessionId: string) => Promise<void>;
   loadActiveSessions: () => Promise<void>;
   loadInvitedSessions: () => Promise<void>;
+  getSession: (sessionId: string) => Promise<void>;
+  clearError: () => void;
 }
 
-// Mock user data for demonstration
-const mockUsers = {
-  'user1': { username: 'sarah_poet', avatarUrl: '/avatars/sarah.jpg' },
-  'user2': { username: 'alex_verse', avatarUrl: '/avatars/alex.jpg' },
-  'user3': { username: 'maya_words', avatarUrl: '/avatars/maya.jpg' },
-  'user4': { username: 'jordan_rhymes', avatarUrl: '/avatars/jordan.jpg' },
+// Helper function to map API response to CollaborationSession
+const mapApiSessionToSession = (apiSession: any): CollaborationSession => {
+  console.log('Mapping API session to frontend session:', apiSession);
+  
+  return {
+    id: apiSession.id,
+    title: apiSession.title,
+    description: apiSession.description,
+    content: apiSession.content || '',
+    createdAt: new Date(apiSession.createdAt),
+    updatedAt: new Date(apiSession.updatedAt),
+    status: apiSession.status || 'active',
+    participants: apiSession.participants?.map((p: any) => ({
+      userId: p.userId,
+      username: p.user?.username || 'Unknown',
+      avatarUrl: p.user?.avatarUrl || '',
+      sharePercentage: p.sharePercentage || 0,
+      contributionType: p.contributionType || 'collaboration',
+      contributionHash: p.contributionHash || '',
+      contributedAt: new Date(p.contributedAt || apiSession.createdAt),
+      approvalStatus: p.approvalStatus || 'pending',
+      isOnline: false, // This would come from real-time service
+      cursorPosition: null,
+      charactersAdded: 0,
+      linesAdded: 0,
+      editsCount: 0,
+    })) || [],
+    ownerId: apiSession.authorId || apiSession.ownerId,
+    versionHistory: apiSession.versionHistory || [],
+    currentVersion: apiSession.currentVersion || '1.0',
+    ownershipProposal: apiSession.ownershipProposal || null,
+    totalShares: apiSession.totalShares || 100,
+    publishedAt: apiSession.publishedAt ? new Date(apiSession.publishedAt) : null,
+    nftTokenId: apiSession.nftTokenId || null,
+  };
 };
 
 export const useCollaborationStore = create<CollaborationState>()(
@@ -119,438 +212,360 @@ export const useCollaborationStore = create<CollaborationState>()(
     isCreatingSession: false,
     isSaving: false,
     isPublishing: false,
+    isLoading: false,
+    error: null,
+
+    // Clear error
+    clearError: () => set({ error: null }),
 
     // Create new collaboration session
     createSession: async (title: string, description: string): Promise<CollaborationSession> => {
-      set({ isCreatingSession: true });
+      console.log('Creating new collaboration session:', { title, description });
+      set({ isCreatingSession: true, error: null });
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const accessToken = getAccessToken();
+      setAuthHeader(accessToken);
 
-      const newSession: CollaborationSession = {
-        id: `collab_${Date.now()}`,
-        title,
-        description,
-        content: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        status: 'active',
-        participants: [
-          {
-            userId: 'user1', // Current user
-            username: 'sarah_poet',
-            avatarUrl: '/avatars/sarah.jpg',
-            sharePercentage: 100,
-            contributionType: 'original',
-            contributionHash: `hash_${Date.now()}`,
-            contributedAt: new Date(),
-            approvalStatus: 'approved',
-            isOnline: true,
-            cursorPosition: null,
-            charactersAdded: 0,
-            linesAdded: 0,
-            editsCount: 0,
-          }
-        ],
-        ownerId: 'user1',
-        versionHistory: [],
-        currentVersion: '1.0',
-        ownershipProposal: null,
-        totalShares: 100,
-        publishedAt: null,
-        nftTokenId: null,
-      };
+      try {
+        const createSessionDto: CreateSessionDto = {
+          title,
+          description,
+          content: '',
+        };
 
-      set((state) => ({
-        activeSessions: [newSession, ...state.activeSessions],
-        currentSession: newSession,
-        isCreatingSession: false,
-      }));
+        const response = await collaborationApiClient.post('/sessions', createSessionDto);
+        console.log('Session created successfully:', response.data);
 
-      return newSession;
+        const newSession = mapApiSessionToSession(response.data);
+
+        set((state) => ({
+          activeSessions: [newSession, ...state.activeSessions],
+          currentSession: newSession,
+          isCreatingSession: false,
+        }));
+
+        return newSession;
+      } catch (error: any) {
+        console.error('Failed to create session:', error);
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to create session';
+        set({ 
+          isCreatingSession: false, 
+          error: errorMessage 
+        });
+        throw new Error(errorMessage);
+      }
     },
 
     // Join a session
     joinSession: async (sessionId: string) => {
-      const { activeSessions, invitedSessions } = get();
-      
-      // Find session in active or invited
-      const session = [...activeSessions, ...invitedSessions].find(s => s.id === sessionId);
-      if (!session) return;
+      console.log('Joining session:', sessionId);
+      set({ error: null });
 
-      // Add current user as participant (simulated)
-      const newParticipant: Collaborator = {
-        userId: 'user2', // Simulated joining user
-        username: 'alex_verse',
-        avatarUrl: '/avatars/alex.jpg',
-        sharePercentage: 0, // Will be negotiated
-        contributionType: 'collaboration',
-        contributionHash: `hash_${Date.now()}`,
-        contributedAt: new Date(),
-        approvalStatus: 'pending',
-        isOnline: true,
-        cursorPosition: null,
-        charactersAdded: 0,
-        linesAdded: 0,
-        editsCount: 0,
-      };
+      const accessToken = getAccessToken();
+      setAuthHeader(accessToken);
 
-      const updatedSession = {
-        ...session,
-        participants: [...session.participants, newParticipant],
-        updatedAt: new Date(),
-      };
+      try {
+        const response = await collaborationApiClient.post(`/sessions/${sessionId}/approve`);
+        console.log('Joined session successfully:', response.data);
 
-      set({
-        currentSession: updatedSession,
-        activeSessions: activeSessions.map(s => s.id === sessionId ? updatedSession : s),
-      });
+        // Reload the session to get updated data
+        await get().getSession(sessionId);
+      } catch (error: any) {
+        console.error('Failed to join session:', error);
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to join session';
+        set({ error: errorMessage });
+        throw new Error(errorMessage);
+      }
     },
 
     // Leave session
-    leaveSession: (sessionId: string) => {
-      const { currentSession, activeSessions } = get();
-      
-      if (currentSession?.id === sessionId) {
-        set({ currentSession: null });
-      }
+    leaveSession: async (sessionId: string) => {
+      console.log('Leaving session:', sessionId);
+      set({ error: null });
 
-      // Remove from active sessions if user was the owner
-      set({
-        activeSessions: activeSessions.filter(s => s.id !== sessionId),
-      });
+      const accessToken = getAccessToken();
+      setAuthHeader(accessToken);
+
+      try {
+        await collaborationApiClient.delete(`/sessions/${sessionId}`);
+        console.log('Left session successfully');
+
+        set((state) => ({
+          currentSession: state.currentSession?.id === sessionId ? null : state.currentSession,
+          activeSessions: state.activeSessions.filter(s => s.id !== sessionId),
+          invitedSessions: state.invitedSessions.filter(s => s.id !== sessionId),
+        }));
+      } catch (error: any) {
+        console.error('Failed to leave session:', error);
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to leave session';
+        set({ error: errorMessage });
+        throw new Error(errorMessage);
+      }
     },
 
     // Update content in real-time
-    updateContent: (sessionId: string, content: string, userId: string) => {
-      const { currentSession, activeSessions } = get();
-      
-      const updatedSession = {
-        ...currentSession!,
-        content,
-        updatedAt: new Date(),
-        participants: currentSession!.participants.map(p =>
-          p.userId === userId
-            ? {
-                ...p,
-                charactersAdded: p.charactersAdded + (content.length - (currentSession?.content.length || 0)),
-                editsCount: p.editsCount + 1,
-              }
-            : p
-        ),
-      };
+    updateContent: async (sessionId: string, content: string, userId: string, changeDescription: string = 'Content update') => {
+      console.log('Updating content for session:', sessionId, 'content length:', content.length);
+      set({ isSaving: true, error: null });
 
-      // Add to version history if significant change
-      if (content.length - (currentSession?.content.length || 0) > 50) {
-        const newVersion: PoemVersion = {
-          id: `version_${Date.now()}`,
+      const accessToken = getAccessToken();
+      setAuthHeader(accessToken);
+
+      try {
+        const updateContentDto: UpdateContentDto = {
           content,
-          authorId: userId,
-          authorName: mockUsers[userId as keyof typeof mockUsers]?.username || 'Unknown',
-          createdAt: new Date(),
-          changeDescription: 'Content update',
-          diffFromPrevious: '',
+          changeDescription,
         };
 
-        updatedSession.versionHistory = [newVersion, ...updatedSession.versionHistory.slice(0, 9)];
-      }
+        const response = await collaborationApiClient.put(`/sessions/${sessionId}/content`, updateContentDto);
+        console.log('Content updated successfully:', response.data);
 
-      set({
-        currentSession: updatedSession,
-        activeSessions: activeSessions.map(s => s.id === sessionId ? updatedSession : s),
-      });
+        const updatedSession = mapApiSessionToSession(response.data);
+
+        set((state) => ({
+          currentSession: state.currentSession?.id === sessionId ? updatedSession : state.currentSession,
+          activeSessions: state.activeSessions.map(s => s.id === sessionId ? updatedSession : s),
+          isSaving: false,
+        }));
+      } catch (error: any) {
+        console.error('Failed to update content:', error);
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to update content';
+        set({ 
+          isSaving: false, 
+          error: errorMessage 
+        });
+        throw new Error(errorMessage);
+      }
     },
 
     // Invite collaborator
-    inviteCollaborator: (sessionId: string, userId: string, share: number) => {
-      const { currentSession, activeSessions } = get();
-      
-      const newCollaborator: Collaborator = {
-        userId,
-        username: mockUsers[userId as keyof typeof mockUsers]?.username || 'Unknown',
-        avatarUrl: mockUsers[userId as keyof typeof mockUsers]?.avatarUrl || '',
-        sharePercentage: share,
-        contributionType: 'collaboration',
-        contributionHash: `invite_${Date.now()}`,
-        contributedAt: new Date(),
-        approvalStatus: 'pending',
-        isOnline: false,
-        cursorPosition: null,
-        charactersAdded: 0,
-        linesAdded: 0,
-        editsCount: 0,
-      };
+    inviteCollaborator: async (sessionId: string, inviteeIdentifier: string) => {
+      console.log('Inviting collaborator to session:', sessionId, 'invitee:', inviteeIdentifier);
+      set({ error: null });
 
-      const updatedSession = {
-        ...currentSession!,
-        participants: [...currentSession!.participants, newCollaborator],
-        updatedAt: new Date(),
-      };
+      const accessToken = getAccessToken();
+      setAuthHeader(accessToken);
 
-      set({
-        currentSession: updatedSession,
-        activeSessions: activeSessions.map(s => s.id === sessionId ? updatedSession : s),
-      });
+      try {
+        const inviteDto: InviteCollaboratorDto = {
+          inviteeIdentifier,
+        };
+
+        const response = await collaborationApiClient.post(`/sessions/${sessionId}/invite`, inviteDto);
+        console.log('Collaborator invited successfully:', response.data);
+
+        // Reload session to get updated participant list
+        await get().getSession(sessionId);
+      } catch (error: any) {
+        console.error('Failed to invite collaborator:', error);
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to invite collaborator';
+        set({ error: errorMessage });
+        throw new Error(errorMessage);
+      }
+    },
+
+    // Approve collaboration (for invited users)
+    approveCollaboration: async (sessionId: string) => {
+      console.log('Approving collaboration for session:', sessionId);
+      set({ error: null });
+
+      const accessToken = getAccessToken();
+      setAuthHeader(accessToken);
+
+      try {
+        const response = await collaborationApiClient.post(`/sessions/${sessionId}/approve`);
+        console.log('Collaboration approved successfully:', response.data);
+
+        // Reload session to get updated data
+        await get().getSession(sessionId);
+      } catch (error: any) {
+        console.error('Failed to approve collaboration:', error);
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to approve collaboration';
+        set({ error: errorMessage });
+        throw new Error(errorMessage);
+      }
     },
 
     // Propose ownership split
-    proposeOwnership: (sessionId: string, splits: { userId: string; percentage: number }[]) => {
-      const { currentSession, activeSessions } = get();
-      
-      const totalPercentage = splits.reduce((sum, split) => sum + split.percentage, 0);
-      if (totalPercentage !== 100) return;
+    proposeOwnership: async (sessionId: string, splits: { userId: string; percentage: number }[]) => {
+      console.log('Proposing ownership for session:', sessionId, 'splits:', splits);
+      set({ error: null });
 
-      const ownershipProposal: OwnershipProposal = {
-        id: `proposal_${Date.now()}`,
-        proposedBy: 'user1', // Current user
-        proposedByName: 'sarah_poet',
-        splits: splits.map(split => ({
-          ...split,
-          username: mockUsers[split.userId as keyof typeof mockUsers]?.username || 'Unknown',
-        })),
-        approvals: splits.map(split => ({
-          userId: split.userId,
-          approved: split.userId === 'user1', // Auto-approve for proposer
-          respondedAt: split.userId === 'user1' ? new Date() : new Date(0),
-        })),
-        status: 'pending',
-        createdAt: new Date(),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-      };
+      const accessToken = getAccessToken();
+      setAuthHeader(accessToken);
 
-      const updatedSession = {
-        ...currentSession!,
-        ownershipProposal,
-        updatedAt: new Date(),
-      };
+      try {
+        const proposalDto: OwnershipProposalDto = { splits };
 
-      set({
-        currentSession: updatedSession,
-        activeSessions: activeSessions.map(s => s.id === sessionId ? updatedSession : s),
-      });
+        const response = await collaborationApiClient.post(`/sessions/${sessionId}/ownership`, proposalDto);
+        console.log('Ownership proposed successfully:', response.data);
+
+        const updatedSession = mapApiSessionToSession(response.data);
+
+        set((state) => ({
+          currentSession: state.currentSession?.id === sessionId ? updatedSession : state.currentSession,
+          activeSessions: state.activeSessions.map(s => s.id === sessionId ? updatedSession : s),
+        }));
+      } catch (error: any) {
+        console.error('Failed to propose ownership:', error);
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to propose ownership';
+        set({ error: errorMessage });
+        throw new Error(errorMessage);
+      }
     },
 
     // Approve ownership proposal
-    approveOwnership: (sessionId: string, proposalId: string, userId: string) => {
-      const { currentSession, activeSessions } = get();
-      
-      if (!currentSession?.ownershipProposal || currentSession.ownershipProposal.id !== proposalId) {
-        return;
-      }
+    approveOwnership: async (sessionId: string, proposalId: string) => {
+      console.log('Approving ownership proposal:', proposalId, 'for session:', sessionId);
+      set({ error: null });
 
-      const updatedProposal = {
-        ...currentSession.ownershipProposal,
-        approvals: currentSession.ownershipProposal.approvals.map(approval =>
-          approval.userId === userId
-            ? { ...approval, approved: true, respondedAt: new Date() }
-            : approval
-        ),
-      };
-
-      // Check if all have approved
-      const allApproved = updatedProposal.approvals.every(a => a.approved);
-      if (allApproved) {
-        updatedProposal.status = 'approved';
+      // Note: This endpoint might need to be implemented in your backend
+      // For now, we'll simulate the approval
+      try {
+        console.log('Ownership approval would be processed here');
+        // Implementation depends on your backend API
         
-        // Update participant shares
-        const updatedParticipants = currentSession.participants.map(participant => {
-          const proposedSplit = updatedProposal.splits.find(s => s.userId === participant.userId);
-          return proposedSplit
-            ? { ...participant, sharePercentage: proposedSplit.percentage }
-            : participant;
-        });
-
-        const updatedSession = {
-          ...currentSession,
-          ownershipProposal: updatedProposal,
-          participants: updatedParticipants,
-          updatedAt: new Date(),
-        };
-
-        set({
-          currentSession: updatedSession,
-          activeSessions: activeSessions.map(s => s.id === sessionId ? updatedSession : s),
-        });
-      } else {
-        const updatedSession = {
-          ...currentSession,
-          ownershipProposal: updatedProposal,
-          updatedAt: new Date(),
-        };
-
-        set({
-          currentSession: updatedSession,
-          activeSessions: activeSessions.map(s => s.id === sessionId ? updatedSession : s),
-        });
+        // Reload session to get updated data
+        await get().getSession(sessionId);
+      } catch (error: any) {
+        console.error('Failed to approve ownership:', error);
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to approve ownership';
+        set({ error: errorMessage });
+        throw new Error(errorMessage);
       }
     },
 
     // Publish collaborative poem
     publishCollaborativePoem: async (sessionId: string) => {
-      set({ isPublishing: true });
+      console.log('Publishing collaborative poem for session:', sessionId);
+      set({ isPublishing: true, error: null });
 
-      const { currentSession, activeSessions } = get();
-      if (!currentSession || currentSession.ownershipProposal?.status !== 'approved') {
-        set({ isPublishing: false });
-        return;
+      // Note: This endpoint might need to be implemented in your backend
+      // For now, we'll simulate the publishing
+      try {
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log('Collaborative poem published successfully');
+
+        set((state) => ({
+          currentSession: state.currentSession ? {
+            ...state.currentSession,
+            status: 'completed',
+            publishedAt: new Date(),
+            nftTokenId: `collab_nft_${Math.random().toString(36).substr(2, 12)}`,
+          } : null,
+          activeSessions: state.activeSessions.map(s => 
+            s.id === sessionId ? {
+              ...s,
+              status: 'completed',
+              publishedAt: new Date(),
+              nftTokenId: `collab_nft_${Math.random().toString(36).substr(2, 12)}`,
+            } : s
+          ),
+          isPublishing: false,
+        }));
+      } catch (error: any) {
+        console.error('Failed to publish collaborative poem:', error);
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to publish collaborative poem';
+        set({ 
+          isPublishing: false, 
+          error: errorMessage 
+        });
+        throw new Error(errorMessage);
       }
-
-      // Simulate blockchain publishing
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
-      const updatedSession: CollaborationSession = {
-        ...currentSession,
-        status: 'completed',
-        publishedAt: new Date(),
-        nftTokenId: `collab_nft_${Math.random().toString(36).substr(2, 12)}`,
-      };
-
-      set({
-        currentSession: updatedSession,
-        activeSessions: activeSessions.map(s => s.id === sessionId ? updatedSession : s),
-        isPublishing: false,
-      });
     },
 
     // Load active sessions
     loadActiveSessions: async () => {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('Loading active sessions');
+      set({ isLoading: true, error: null });
 
-      const mockSessions: CollaborationSession[] = [
-        {
-          id: 'collab_1',
-          title: 'Neon Dreams Part 1',
-          description: 'Cyberpunk poetry collaboration',
-          content: `In circuits deep where neon bleeds,
-We plant our digital seeds,
-A symphony of light and code,
-On this electric road we've strode.`,
-          createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-          updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
-          status: 'active',
-          participants: [
-            {
-              userId: 'user1',
-              username: 'sarah_poet',
-              avatarUrl: '/avatars/sarah.jpg',
-              sharePercentage: 40,
-              contributionType: 'original',
-              contributionHash: 'hash1',
-              contributedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-              approvalStatus: 'approved',
-              isOnline: true,
-              cursorPosition: 45,
-              charactersAdded: 240,
-              linesAdded: 8,
-              editsCount: 12,
-            },
-            {
-              userId: 'user2',
-              username: 'alex_verse',
-              avatarUrl: '/avatars/alex.jpg',
-              sharePercentage: 35,
-              contributionType: 'collaboration',
-              contributionHash: 'hash2',
-              contributedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-              approvalStatus: 'approved',
-              isOnline: true,
-              cursorPosition: 120,
-              charactersAdded: 180,
-              linesAdded: 6,
-              editsCount: 8,
-            }
-          ],
-          ownerId: 'user1',
-          versionHistory: [],
-          currentVersion: '1.2',
-          ownershipProposal: {
-            id: 'prop_1',
-            proposedBy: 'user1',
-            proposedByName: 'sarah_poet',
-            splits: [
-              { userId: 'user1', username: 'sarah_poet', percentage: 40 },
-              { userId: 'user2', username: 'alex_verse', percentage: 35 },
-              { userId: 'user3', username: 'maya_words', percentage: 25 },
-            ],
-            approvals: [
-              { userId: 'user1', approved: true, respondedAt: new Date(Date.now() - 3 * 60 * 60 * 1000) },
-              { userId: 'user2', approved: true, respondedAt: new Date(Date.now() - 2 * 60 * 60 * 1000) },
-              { userId: 'user3', approved: false, respondedAt: new Date(0) },
-            ],
-            status: 'pending',
-            createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
-            expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-          },
-          totalShares: 100,
-          publishedAt: null,
-          nftTokenId: null,
-        }
-      ];
+      const accessToken = getAccessToken();
+      setAuthHeader(accessToken);
 
-      set({ activeSessions: mockSessions });
+      try {
+        const response = await collaborationApiClient.get('/sessions');
+        console.log('Active sessions loaded successfully:', response.data);
+
+        const sessions = Array.isArray(response.data) 
+          ? response.data.map(mapApiSessionToSession)
+          : [];
+
+        set({ 
+          activeSessions: sessions,
+          isLoading: false,
+        });
+      } catch (error: any) {
+        console.error('Failed to load active sessions:', error);
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to load active sessions';
+        set({ 
+          isLoading: false, 
+          error: errorMessage 
+        });
+        throw new Error(errorMessage);
+      }
     },
 
     // Load invited sessions
     loadInvitedSessions: async () => {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Loading invited sessions');
+      set({ isLoading: true, error: null });
 
-      const mockInvited: CollaborationSession[] = [
-        {
-          id: 'collab_2',
-          title: 'Urban Echoes Collective',
-          description: 'City life poetry project',
-          content: `The city breathes in concrete sighs,
-A thousand stories in our eyes,
-We walk these streets with hurried pace,
-Seeking our own sacred space.`,
-          createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-          updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          status: 'active',
-          participants: [
-            {
-              userId: 'user3',
-              username: 'maya_words',
-              avatarUrl: '/avatars/maya.jpg',
-              sharePercentage: 60,
-              contributionType: 'original',
-              contributionHash: 'hash3',
-              contributedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-              approvalStatus: 'approved',
-              isOnline: false,
-              cursorPosition: null,
-              charactersAdded: 320,
-              linesAdded: 10,
-              editsCount: 15,
-            },
-            {
-              userId: 'user2', // Current user invited
-              username: 'alex_verse',
-              avatarUrl: '/avatars/alex.jpg',
-              sharePercentage: 0, // Not negotiated yet
-              contributionType: 'collaboration',
-              contributionHash: 'invite_hash',
-              contributedAt: new Date(),
-              approvalStatus: 'pending',
-              isOnline: true,
-              cursorPosition: null,
-              charactersAdded: 0,
-              linesAdded: 0,
-              editsCount: 0,
-            }
-          ],
-          ownerId: 'user3',
-          versionHistory: [],
-          currentVersion: '1.0',
-          ownershipProposal: null,
-          totalShares: 100,
-          publishedAt: null,
-          nftTokenId: null,
-        }
-      ];
+      const accessToken = getAccessToken();
+      setAuthHeader(accessToken);
 
-      set({ invitedSessions: mockInvited });
+      try {
+        const response = await collaborationApiClient.get('/sessions/invited');
+        console.log('Invited sessions loaded successfully:', response.data);
+
+        const sessions = Array.isArray(response.data) 
+          ? response.data.map(mapApiSessionToSession)
+          : [];
+
+        set({ 
+          invitedSessions: sessions,
+          isLoading: false,
+        });
+      } catch (error: any) {
+        console.error('Failed to load invited sessions:', error);
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to load invited sessions';
+        set({ 
+          isLoading: false, 
+          error: errorMessage 
+        });
+        throw new Error(errorMessage);
+      }
+    },
+
+    // Get specific session
+    getSession: async (sessionId: string) => {
+      console.log('Loading session:', sessionId);
+      set({ isLoading: true, error: null });
+
+      const accessToken = getAccessToken();
+      setAuthHeader(accessToken);
+
+      try {
+        const response = await collaborationApiClient.get(`/sessions/${sessionId}`);
+        console.log('Session loaded successfully:', response.data);
+
+        const session = mapApiSessionToSession(response.data);
+
+        set((state) => ({
+          currentSession: session,
+          activeSessions: state.activeSessions.map(s => s.id === sessionId ? session : s),
+          invitedSessions: state.invitedSessions.map(s => s.id === sessionId ? session : s),
+          isLoading: false,
+        }));
+      } catch (error: any) {
+        console.error('Failed to load session:', error);
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to load session';
+        set({ 
+          isLoading: false, 
+          error: errorMessage 
+        });
+        throw new Error(errorMessage);
+      }
     },
   }), {
     name: 'collaboration-store',
