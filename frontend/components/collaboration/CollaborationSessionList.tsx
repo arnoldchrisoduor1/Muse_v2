@@ -1,40 +1,57 @@
 "use client";
-import { motion } from 'framer-motion';
-import { Users, Clock, Edit, Zap, TrendingUp } from 'lucide-react';
-import { useCollaborationStore } from '@/lib/store/collaboration-store';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { motion } from "framer-motion";
+import { Users, Clock, Edit, Zap, TrendingUp } from "lucide-react";
+import { useCollaborationStore } from "@/lib/store/collaboration-store";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import Link from "next/link";
 
 interface CollaborationSessionListProps {
   title: string;
   sessions: any[];
-  type: 'active' | 'invited';
+  type: "active" | "invited";
+  priority?: boolean;
 }
 
-export function CollaborationSessionList({ title, sessions, type }: CollaborationSessionListProps) {
+export function CollaborationSessionList({
+  title,
+  sessions,
+  type,
+  priority = false,
+}: CollaborationSessionListProps) {
   const { joinSession } = useCollaborationStore();
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'text-accent';
-      case 'draft': return 'text-warning';
-      case 'completed': return 'text-primary';
-      default: return 'text-text-muted';
+      case "active":
+        return "text-accent";
+      case "draft":
+        return "text-warning";
+      case "completed":
+        return "text-primary";
+      default:
+        return "text-text-muted";
     }
   };
 
+  const cardClass = priority ? "border-warning/30 bg-warning/10" : "";
+
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'active': return Zap;
-      case 'draft': return Edit;
-      case 'completed': return TrendingUp;
-      default: return Clock;
+      case "active":
+        return Zap;
+      case "draft":
+        return Edit;
+      case "completed":
+        return TrendingUp;
+      default:
+        return Clock;
     }
   };
 
   if (sessions.length === 0) {
     return (
-      <Card className="p-6">
+      <Card className={`p-6 ${cardClass}`}>
         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
           <Users className="text-primary" size={20} />
           {title}
@@ -42,13 +59,14 @@ export function CollaborationSessionList({ title, sessions, type }: Collaboratio
         <div className="text-center py-8">
           <Users size={48} className="text-text-muted mx-auto mb-4" />
           <p className="text-text-secondary mb-2">
-            {type === 'active' ? 'No active collaborations' : 'No pending invitations'}
+            {type === "active"
+              ? "No active collaborations"
+              : "No pending invitations"}
           </p>
           <p className="text-text-muted text-sm">
-            {type === 'active' 
-              ? 'Start a new collaboration to see it here' 
-              : 'You\'ll see invitations here when others invite you'
-            }
+            {type === "active"
+              ? "Start a new collaboration to see it here"
+              : "You'll see invitations here when others invite you"}
           </p>
         </div>
       </Card>
@@ -70,9 +88,14 @@ export function CollaborationSessionList({ title, sessions, type }: Collaboratio
       <div className="space-y-4">
         {sessions.map((session, index) => {
           const StatusIcon = getStatusIcon(session.status);
-          const onlineParticipants = session.participants.filter((p: any) => p.isOnline);
-          const totalContributions = session.participants.reduce((sum: number, p: any) => sum + p.charactersAdded, 0);
-          
+          const onlineParticipants = session.participants.filter(
+            (p: any) => p.isOnline
+          );
+          const totalContributions = session.participants.reduce(
+            (sum: number, p: any) => sum + p.charactersAdded,
+            0
+          );
+
           return (
             <motion.div
               key={session.id}
@@ -87,7 +110,11 @@ export function CollaborationSessionList({ title, sessions, type }: Collaboratio
                     <h3 className="text-lg font-semibold text-text-primary group-hover:text-primary transition-colors">
                       {session.title}
                     </h3>
-                    <div className={`flex items-center gap-1 text-xs ${getStatusColor(session.status)}`}>
+                    <div
+                      className={`flex items-center gap-1 text-xs ${getStatusColor(
+                        session.status
+                      )}`}
+                    >
                       <StatusIcon size={14} />
                       <span className="capitalize">{session.status}</span>
                     </div>
@@ -96,16 +123,13 @@ export function CollaborationSessionList({ title, sessions, type }: Collaboratio
                     {session.description}
                   </p>
                 </div>
-                
-                {type === 'invited' && (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => joinSession(session.id)}
-                    className="ml-4 shrink-0"
-                  >
-                    Join
-                  </Button>
+                {/* // Add these buttons to the invited sessions */}
+                {type === "invited" && (
+                  <Link href={`/collaborate/invite/${session.id}`}>
+                    <Button variant="primary" size="sm">
+                      Review
+                    </Button>
+                  </Link>
                 )}
               </div>
 
@@ -116,7 +140,8 @@ export function CollaborationSessionList({ title, sessions, type }: Collaboratio
                   <div className="flex items-center gap-2">
                     <Users size={14} />
                     <span>
-                      {onlineParticipants.length}/{session.participants.length} online
+                      {onlineParticipants.length}/{session.participants.length}{" "}
+                      online
                     </span>
                   </div>
 
@@ -135,14 +160,12 @@ export function CollaborationSessionList({ title, sessions, type }: Collaboratio
                   </div>
                 </div>
 
-                {type === 'active' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {/* Navigate to session */}}
-                  >
-                    Continue
-                  </Button>
+                {type === "active" && (
+                  <Link href={`/collaborate/session/${session.id}`}>
+                    <Button variant="outline" size="sm">
+                      Continue
+                    </Button>
+                  </Link>
                 )}
               </div>
 
@@ -151,26 +174,36 @@ export function CollaborationSessionList({ title, sessions, type }: Collaboratio
                 <div className="mt-3 pt-3 border-t border-white/10">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-text-muted">Ownership Proposal</span>
-                    <div className={`px-2 py-1 rounded-full ${
-                      session.ownershipProposal.status === 'approved'
-                        ? 'bg-accent/20 text-accent'
-                        : session.ownershipProposal.status === 'pending'
-                        ? 'bg-warning/20 text-warning'
-                        : 'bg-error/20 text-error'
-                    }`}>
-                      {session.ownershipProposal.status === 'approved' ? 'Approved' :
-                       session.ownershipProposal.status === 'pending' ? 'Pending Approval' : 'Rejected'}
+                    <div
+                      className={`px-2 py-1 rounded-full ${
+                        session.ownershipProposal.status === "approved"
+                          ? "bg-accent/20 text-accent"
+                          : session.ownershipProposal.status === "pending"
+                          ? "bg-warning/20 text-warning"
+                          : "bg-error/20 text-error"
+                      }`}
+                    >
+                      {session.ownershipProposal.status === "approved"
+                        ? "Approved"
+                        : session.ownershipProposal.status === "pending"
+                        ? "Pending Approval"
+                        : "Rejected"}
                     </div>
                   </div>
-                  
+
                   {/* Split Preview */}
-                  {session.ownershipProposal.status === 'pending' && (
+                  {session.ownershipProposal.status === "pending" && (
                     <div className="flex items-center gap-2 mt-2">
-                      {session.ownershipProposal.splits.slice(0, 3).map((split: any) => (
-                        <div key={split.userId} className="text-xs text-text-muted">
-                          {split.username}: {split.percentage}%
-                        </div>
-                      ))}
+                      {session.ownershipProposal.splits
+                        .slice(0, 3)
+                        .map((split: any) => (
+                          <div
+                            key={split.userId}
+                            className="text-xs text-text-muted"
+                          >
+                            {split.username}: {split.percentage}%
+                          </div>
+                        ))}
                       {session.ownershipProposal.splits.length > 3 && (
                         <div className="text-xs text-text-muted">
                           +{session.ownershipProposal.splits.length - 3} more

@@ -1,13 +1,14 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Plus, Clock, Zap, TrendingUp } from 'lucide-react';
+import { Users, Plus, Clock, Zap, TrendingUp, Mail, AlertCircle } from 'lucide-react';
 import { CollaborationSessionList } from '@/components/collaboration/CollaborationSessionList';
 import { CreateSessionModal } from '@/components/collaboration/CreateSessionModal';
 import { QuickStats } from '@/components/collaboration/QuickStats';
 import { useCollaborationStore } from '@/lib/store/collaboration-store';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import Link from 'next/link';
 
 export default function CollaboratePage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -15,7 +16,9 @@ export default function CollaboratePage() {
     activeSessions, 
     invitedSessions, 
     loadActiveSessions, 
-    loadInvitedSessions
+    loadInvitedSessions,
+    isLoading,
+    error
   } = useCollaborationStore();
 
   useEffect(() => {
@@ -23,34 +26,44 @@ export default function CollaboratePage() {
     loadInvitedSessions();
   }, [loadActiveSessions, loadInvitedSessions]);
 
+  // Real stats based on actual data
+  const totalCollaborators = activeSessions.reduce((total, session) => 
+    total + session.participants.filter((p: any) => p.approvalStatus === 'approved').length, 0
+  );
+  
+  const pendingInvitations = invitedSessions.length;
+  const totalCharacters = activeSessions.reduce((total, session) => 
+    total + session.participants.reduce((sum: number, p: any) => sum + p.charactersAdded, 0), 0
+  );
+
   const stats = [
     {
       icon: Users,
-      label: 'Active Collaborations',
+      label: 'Active Sessions',
       value: activeSessions.length.toString(),
       color: 'text-primary',
-      change: '+2 this week',
+      change: `${activeSessions.filter(s => s.status === 'active').length} active`,
     },
     {
-      icon: Clock,
-      label: 'Total Time',
-      value: '24h',
-      color: 'text-secondary',
-      change: 'Across all sessions',
+      icon: Mail,
+      label: 'Pending Invites',
+      value: pendingInvitations.toString(),
+      color: 'text-warning',
+      change: pendingInvitations > 0 ? 'Needs attention' : 'All clear',
     },
     {
       icon: Zap,
       label: 'Collaborators',
-      value: '8',
+      value: totalCollaborators.toString(),
       color: 'text-accent',
-      change: 'Working with you',
+      change: 'Across all sessions',
     },
     {
       icon: TrendingUp,
-      label: 'Success Rate',
-      value: '85%',
-      color: 'text-warning',
-      change: 'Projects completed',
+      label: 'Total Contributions',
+      value: `${(totalCharacters / 1000).toFixed(1)}k`,
+      color: 'text-secondary',
+      change: 'Characters written',
     },
   ];
 
@@ -77,6 +90,25 @@ export default function CollaboratePage() {
           New Collaboration
         </Button>
       </motion.div>
+
+      {/* Error Alert */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6"
+        >
+          <Card className="p-4 bg-error/20 border-error/30">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="text-error" size={20} />
+              <div>
+                <div className="font-medium text-error">Error</div>
+                <div className="text-sm text-text-secondary">{error}</div>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Quick Stats */}
       <motion.div
@@ -114,7 +146,17 @@ export default function CollaboratePage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         {/* Main Content */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="xl:col-span-2 space-y-8">
+          {/* Pending Invitations - Show first if any */}
+          {invitedSessions.length > 0 && (
+            <CollaborationSessionList
+              title="Pending Invitations"
+              sessions={invitedSessions}
+              type="invited"
+              priority={true}
+            />
+          )}
+
           {/* Active Sessions */}
           <CollaborationSessionList
             title="Your Active Collaborations"
@@ -122,18 +164,56 @@ export default function CollaboratePage() {
             type="active"
           />
 
-          {/* Invited Sessions */}
-          <CollaborationSessionList
-            title="Pending Invitations"
-            sessions={invitedSessions}
-            type="invited"
-          />
+          {/* Empty State when no sessions */}
+          {activeSessions.length === 0 && invitedSessions.length === 0 && !isLoading && (
+            <Card className="p-12 text-center">
+              <Users size={64} className="text-text-muted mx-auto mb-6" />
+              <h3 className="text-2xl font-bold mb-4">No Collaborations Yet</h3>
+              <p className="text-text-secondary mb-6 max-w-md mx-auto">
+                Start your first collaboration to write poetry with others, split ownership fairly, and publish together.
+              </p>
+              <Button
+                variant="primary"
+                icon={Plus}
+                onClick={() => setShowCreateModal(true)}
+                size="lg"
+              >
+                Start Your First Collaboration
+              </Button>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
           <QuickStats />
           
+          {/* Quick Actions */}
+          <Card className="p-6">
+            <h3 className="font-semibold mb-4 text-primary">Quick Actions</h3>
+            <div className="space-y-3">
+              <Button
+                variant="primary"
+                className="w-full justify-center"
+                onClick={() => setShowCreateModal(true)}
+                icon={Plus}
+              >
+                New Session
+              </Button>
+              {invitedSessions.length > 0 && (
+                <Link href={`/collaboration/invite/${invitedSessions[0].id}`} className="block">
+                  <Button
+                    variant="primary"
+                    className="w-full justify-center"
+                    icon={Mail}
+                  >
+                    Review Invitations
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </Card>
+
           {/* How It Works */}
           <Card className="p-6">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
@@ -172,29 +252,6 @@ export default function CollaboratePage() {
                 <p className="text-text-secondary">
                   Publish as fractional NFT with automatic revenue sharing
                 </p>
-              </div>
-            </div>
-          </Card>
-
-          {/* Benefits */}
-          <Card className="p-6">
-            <h3 className="font-semibold mb-4 text-primary">Collaboration Benefits</h3>
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-text-secondary">Revenue Sharing</span>
-                <span className="text-primary font-medium">Automatic</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-text-secondary">Ownership Tracking</span>
-                <span className="text-primary font-medium">Blockchain</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-text-secondary">Real-time Editing</span>
-                <span className="text-primary font-medium">Live</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-text-secondary">Version Control</span>
-                <span className="text-primary font-medium">Full History</span>
               </div>
             </div>
           </Card>

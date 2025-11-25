@@ -47,7 +47,7 @@ interface Collaborator {
   editsCount: number;
 }
 
-interface CollaborationSession {
+export interface CollaborationSession {
   id: string;
   title: string;
   description: string;
@@ -151,7 +151,7 @@ interface CollaborationState {
   createSession: (title: string, description: string) => Promise<CollaborationSession>;
   joinSession: (sessionId: string) => Promise<void>;
   leaveSession: (sessionId: string) => Promise<void>;
-  updateContent: (sessionId: string, content: string, userId: string, changeDescription?: string) => Promise<void>;
+  updateContent: (sessionId: string, content: string, userId: string) => Promise<void>;
   inviteCollaborator: (sessionId: string, inviteeIdentifier: string) => Promise<void>;
   approveCollaboration: (sessionId: string) => Promise<void>;
   proposeOwnership: (sessionId: string, splits: { userId: string; percentage: number }[]) => Promise<void>;
@@ -304,7 +304,7 @@ export const useCollaborationStore = create<CollaborationState>()(
     },
 
     // Update content in real-time
-    updateContent: async (sessionId: string, content: string, userId: string, changeDescription: string = 'Content update') => {
+    updateContent: async (sessionId: string, content: string, userId: string) => {
       console.log('Updating content for session:', sessionId, 'content length:', content.length);
       set({ isSaving: true, error: null });
 
@@ -314,7 +314,6 @@ export const useCollaborationStore = create<CollaborationState>()(
       try {
         const updateContentDto: UpdateContentDto = {
           content,
-          changeDescription,
         };
 
         const response = await collaborationApiClient.put(`/sessions/${sessionId}/content`, updateContentDto);
